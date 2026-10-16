@@ -80,8 +80,10 @@ app.post("/accounts", async (request, reply) => {
     try {
         const planResult = await pool.query(
             `SELECT id
-             FROM plans
-             WHERE name = $1 AND scope = 'account'`,
+     FROM plans
+     WHERE name = $1
+       AND scope = 'account'
+       AND owner_account_id IS NULL`,
             [planName],
         );
 
@@ -158,9 +160,20 @@ app.post("/accounts/me/users", async (request, reply) => {
 
         const planResult = await pool.query(
             `SELECT id
-             FROM plans
-             WHERE name = $1 AND scope = 'user'`,
-            [planName],
+     FROM plans
+     WHERE name = $1
+       AND scope = 'user'
+       AND (
+           owner_account_id IS NULL
+           OR owner_account_id = $2
+       )
+     ORDER BY
+       CASE
+           WHEN owner_account_id = $2 THEN 0
+           ELSE 1
+       END
+     LIMIT 1`,
+            [planName, account.id],
         );
 
         const plan = planResult.rows[0];
@@ -474,13 +487,31 @@ app.get("/usage", async (request, reply) => {
             });
         }
 
-        const monthStart = new Date(
-            Date.UTC(
-                new Date().getUTCFullYear(),
-                new Date().getUTCMonth(),
-                1,
-            ),
-        ).toISOString().slice(0, 10);
+        const query = request.query as { month?: unknown };
+        const requestedMonth = query.month;
+
+        if (
+            requestedMonth !== undefined &&
+            (
+                typeof requestedMonth !== "string" ||
+                !/^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth) ||
+                requestedMonth.startsWith("0000")
+            )
+        ) {
+            return reply.code(400).send({
+                error: "Invalid month format. Use YYYY-MM, for example 2026-09",
+            });
+        }
+
+        const monthStart = requestedMonth
+            ? `${requestedMonth}-01`
+            : new Date(
+                Date.UTC(
+                    new Date().getUTCFullYear(),
+                    new Date().getUTCMonth(),
+                    1,
+                ),
+            ).toISOString().slice(0, 10);
 
         const result = await pool.query(
             `SELECT
@@ -688,7 +719,9 @@ app.patch("/admin/accounts/:accountId/plan", async (request, reply) => {
         const planResult = await pool.query(
             `SELECT id, name
              FROM plans
-             WHERE name = $1 AND scope = 'account'`,
+             WHERE name = $1
+  AND scope = 'account'
+  AND owner_account_id IS NULL`,
             [planName],
         );
 
@@ -756,7 +789,9 @@ app.patch("/admin/users/:userId/plan", async (request, reply) => {
         const planResult = await pool.query(
             `SELECT id, name
              FROM plans
-             WHERE name = $1 AND scope = 'user'`,
+             WHERE name = $1
+  AND scope = 'user'
+  AND owner_account_id IS NULL`,
             [planName],
         );
 
@@ -802,31 +837,545 @@ app.patch("/admin/users/:userId/plan", async (request, reply) => {
     }
 });
 
-app.get("/plans", async (_request, reply) => {
+
+app.patch("/accounts/me/plan", async (request, reply) => {
+    const apiKey = request.headers["x-api-key"];
+
+    if (typeof apiKey !== "string" || apiKey.length === 0) {
+        return reply.code(401).send({
+            error: "Missing or invalid API key",
+        });
+    }
+
+    const bodyValidation = z.object({
+        planId: z.coerce.number()
+            .int()
+            .positive()
+            .max(Number.MAX_SAFE_INTEGER),
+    }).safeParse(request.body);
+
+    if (!bodyValidation.success) {
+        return reply.code(400).send({
+            error: "A valid planId is required",
+        });
+    }
+
     try {
+        const apiKeyHash = createHash("sha256")
+            .update(apiKey)
+            .digest("hex");
+
+        const accountResult = await pool.query(
+            `SELECT id
+             FROM accounts
+             WHERE api_key_hash = $1`,
+            [apiKeyHash],
+        );
+
+        const account = accountResult.rows[0];
+
+        if (!account) {
+            return reply.code(401).send({
+                error: "Invalid API key",
+            });
+        }
+
+        const { planId } = bodyValidation.data;
+
+        const planResult = await pool.query(
+            `SELECT id, name
+             FROM plans
+             WHERE id = $1
+               AND scope = 'account'
+               AND (
+                   owner_account_id IS NULL
+                   OR owner_account_id = $2
+               )`,
+            [planId, account.id],
+        );
+
+        const plan = planResult.rows[0];
+
+        if (!plan) {
+            return reply.code(404).send({
+                error: "Account plan not found",
+            });
+        }
+
+        const updateResult = await pool.query(
+            `UPDATE accounts
+             SET plan_id = $1
+             WHERE id = $2
+             RETURNING id, name, plan_id`,
+            [plan.id, account.id],
+        );
+
+        const updatedAccount = updateResult.rows[0];
+
+        return reply.code(200).send({
+            account: {
+                id: Number(updatedAccount.id),
+                name: updatedAccount.name,
+                planId: Number(updatedAccount.plan_id),
+                planName: plan.name,
+            },
+        });
+    } catch (error) {
+        request.log.error(error);
+
+        return reply.code(500).send({
+            error: "Failed to change account plan",
+        });
+    }
+});
+
+
+app.patch("/accounts/me/users/:userId/plan", async (request, reply) => {
+    const apiKey = request.headers["x-api-key"];
+
+    if (typeof apiKey !== "string" || apiKey.length === 0) {
+        return reply.code(401).send({
+            error: "Missing or invalid API key",
+        });
+    }
+
+    const paramsValidation = z.object({
+        userId: z.coerce.number()
+            .int()
+            .positive()
+            .max(Number.MAX_SAFE_INTEGER),
+    }).safeParse(request.params);
+
+    const bodyValidation = z.object({
+        planId: z.coerce.number()
+            .int()
+            .positive()
+            .max(Number.MAX_SAFE_INTEGER),
+    }).safeParse(request.body);
+
+    if (!paramsValidation.success || !bodyValidation.success) {
+        return reply.code(400).send({
+            error: "Invalid user plan change data",
+        });
+    }
+
+    try {
+        const apiKeyHash = createHash("sha256")
+            .update(apiKey)
+            .digest("hex");
+
+        const accountResult = await pool.query(
+            `SELECT id
+             FROM accounts
+             WHERE api_key_hash = $1`,
+            [apiKeyHash],
+        );
+
+        const account = accountResult.rows[0];
+
+        if (!account) {
+            return reply.code(401).send({
+                error: "Invalid API key",
+            });
+        }
+
+        const { userId } = paramsValidation.data;
+        const { planId } = bodyValidation.data;
+
+        const userResult = await pool.query(
+            `SELECT id
+             FROM users
+             WHERE id = $1 AND account_id = $2`,
+            [userId, account.id],
+        );
+
+        if (!userResult.rows[0]) {
+            return reply.code(404).send({
+                error: "User not found in this account",
+            });
+        }
+
+        const planResult = await pool.query(
+            `SELECT id, name
+             FROM plans
+             WHERE id = $1
+               AND scope = 'user'
+               AND (
+                   owner_account_id IS NULL
+                   OR owner_account_id = $2
+               )`,
+            [planId, account.id],
+        );
+
+        const plan = planResult.rows[0];
+
+        if (!plan) {
+            return reply.code(404).send({
+                error: "User plan not found",
+            });
+        }
+
+        const updateResult = await pool.query(
+            `UPDATE users
+             SET plan_id = $1
+             WHERE id = $2
+               AND account_id = $3
+             RETURNING id, account_id, external_user_id, plan_id`,
+            [plan.id, userId, account.id],
+        );
+
+        const user = updateResult.rows[0];
+
+        if (!user) {
+            return reply.code(404).send({
+                error: "User not found in this account",
+            });
+        }
+
+        return reply.code(200).send({
+            user: {
+                id: Number(user.id),
+                accountId: Number(user.account_id),
+                externalUserId: user.external_user_id,
+                planId: Number(user.plan_id),
+                planName: plan.name,
+            },
+        });
+    } catch (error) {
+        request.log.error(error);
+
+        return reply.code(500).send({
+            error: "Failed to change user plan",
+        });
+    }
+});
+
+
+
+app.get("/plans", async (request, reply) => {
+    try {
+        const apiKeyHeader = request.headers["x-api-key"];
+        let ownerAccountId: number | null = null;
+
+        // Without an API key, return predefined plans only.
+        // With an API key, include only that account's custom plans.
+        if (apiKeyHeader !== undefined) {
+            if (
+                typeof apiKeyHeader !== "string" ||
+                apiKeyHeader.length === 0
+            ) {
+                return reply.code(401).send({
+                    error: "Invalid API key",
+                });
+            }
+
+            const apiKeyHash = createHash("sha256")
+                .update(apiKeyHeader)
+                .digest("hex");
+
+            const accountResult = await pool.query(
+                `SELECT id
+                 FROM accounts
+                 WHERE api_key_hash = $1`,
+                [apiKeyHash],
+            );
+
+            const account = accountResult.rows[0];
+
+            if (!account) {
+                return reply.code(401).send({
+                    error: "Invalid API key",
+                });
+            }
+
+            ownerAccountId = Number(account.id);
+        }
+
         const result = await pool.query(
             `SELECT
                 id,
                 name,
                 scope,
                 monthly_allowance AS "monthlyAllowance",
-                max_units_per_request AS "maxUnitsPerRequest"
+                max_units_per_request AS "maxUnitsPerRequest",
+                (owner_account_id IS NULL) AS "predefined"
              FROM plans
+             WHERE owner_account_id IS NULL
+                OR owner_account_id = $1
              ORDER BY scope, monthly_allowance`,
+            [ownerAccountId],
         );
 
         return reply.code(200).send({
             plans: result.rows.map((plan) => ({
                 ...plan,
+                id: Number(plan.id),
                 monthlyAllowance: Number(plan.monthlyAllowance),
                 maxUnitsPerRequest: Number(plan.maxUnitsPerRequest),
             })),
         });
     } catch (error) {
-        _request.log.error(error);
+        request.log.error(error);
 
         return reply.code(500).send({
             error: "Failed to retrieve plans",
+        });
+    }
+});
+
+
+app.post("/plans", async (request, reply) => {
+    try {
+        const apiKey = request.headers["x-api-key"];
+
+        if (typeof apiKey !== "string" || apiKey.length === 0) {
+            return reply.code(401).send({
+                error: "Missing or invalid API key",
+            });
+        }
+
+        const apiKeyHash = createHash("sha256")
+            .update(apiKey)
+            .digest("hex");
+
+        const accountResult = await pool.query(
+            `SELECT id
+             FROM accounts
+             WHERE api_key_hash = $1`,
+            [apiKeyHash],
+        );
+
+        const account = accountResult.rows[0];
+
+        if (!account) {
+            return reply.code(401).send({
+                error: "Invalid API key",
+            });
+        }
+
+        const body = (request.body ?? {}) as {
+            name?: unknown;
+            scope?: unknown;
+            monthlyAllowance?: unknown;
+            maxUnitsPerRequest?: unknown;
+        };
+
+        const name =
+            typeof body.name === "string" ? body.name.trim() : "";
+
+        const scope = body.scope;
+        const monthlyAllowance = body.monthlyAllowance;
+        const maxUnitsPerRequest = body.maxUnitsPerRequest;
+
+        if (
+            name.length === 0 ||
+            name.length > 100 ||
+            (scope !== "account" && scope !== "user") ||
+            typeof monthlyAllowance !== "number" ||
+            !Number.isSafeInteger(monthlyAllowance) ||
+            monthlyAllowance <= 0 ||
+            typeof maxUnitsPerRequest !== "number" ||
+            !Number.isSafeInteger(maxUnitsPerRequest) ||
+            maxUnitsPerRequest <= 0
+        ) {
+            return reply.code(400).send({
+                error: "Invalid plan details",
+                details:
+                    "Provide a name, scope (account or user), and positive whole-number limits.",
+            });
+        }
+
+        const result = await pool.query(
+            `INSERT INTO plans (
+                name,
+                scope,
+                monthly_allowance,
+                max_units_per_request,
+                owner_account_id
+             )
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING
+                id,
+                name,
+                scope,
+                monthly_allowance AS "monthlyAllowance",
+                max_units_per_request AS "maxUnitsPerRequest",
+                owner_account_id AS "ownerAccountId"`,
+            [
+                name,
+                scope,
+                monthlyAllowance,
+                maxUnitsPerRequest,
+                account.id,
+            ],
+        );
+
+        const plan = result.rows[0];
+
+        return reply.code(201).send({
+            plan: {
+                ...plan,
+                id: Number(plan.id),
+                ownerAccountId: Number(plan.ownerAccountId),
+                monthlyAllowance: Number(plan.monthlyAllowance),
+                maxUnitsPerRequest: Number(plan.maxUnitsPerRequest),
+                predefined: false,
+            },
+        });
+    } catch (error) {
+        const dbError = error as { code?: string };
+
+        if (dbError.code === "23505") {
+            return reply.code(409).send({
+                error: "A plan with this name and scope already exists for this account",
+            });
+        }
+
+        request.log.error(error);
+
+        return reply.code(500).send({
+            error: "Failed to create plan",
+        });
+    }
+});
+
+
+
+const customPlanIdSchema = z.object({
+    planId: z.coerce
+        .number()
+        .int()
+        .positive()
+        .max(Number.MAX_SAFE_INTEGER),
+});
+
+const updateCustomPlanSchema = z.object({
+    name: z.string().trim().min(1).max(100).optional(),
+    monthlyAllowance: z.number()
+        .int()
+        .positive()
+        .max(Number.MAX_SAFE_INTEGER)
+        .optional(),
+    maxUnitsPerRequest: z.number()
+        .int()
+        .positive()
+        .max(Number.MAX_SAFE_INTEGER)
+        .optional(),
+}).refine(
+    (body) =>
+        body.name !== undefined ||
+        body.monthlyAllowance !== undefined ||
+        body.maxUnitsPerRequest !== undefined,
+    {
+        message: "At least one field must be provided",
+    },
+);
+
+app.patch("/plans/:planId", async (request, reply) => {
+    const apiKey = request.headers["x-api-key"];
+
+    if (typeof apiKey !== "string" || apiKey.length === 0) {
+        return reply.code(401).send({
+            error: "Missing API key",
+        });
+    }
+
+    const paramsValidation = customPlanIdSchema.safeParse(
+        request.params,
+    );
+    const bodyValidation = updateCustomPlanSchema.safeParse(
+        request.body,
+    );
+
+    if (!paramsValidation.success || !bodyValidation.success) {
+        return reply.code(400).send({
+            error: "Invalid custom plan update data",
+        });
+    }
+
+    try {
+        const apiKeyHash = createHash("sha256")
+            .update(apiKey)
+            .digest("hex");
+
+        const accountResult = await pool.query(
+            `SELECT id
+             FROM accounts
+             WHERE api_key_hash = $1`,
+            [apiKeyHash],
+        );
+
+        const account = accountResult.rows[0];
+
+        if (!account) {
+            return reply.code(401).send({
+                error: "Invalid API key",
+            });
+        }
+
+        const { planId } = paramsValidation.data;
+        const {
+            name,
+            monthlyAllowance,
+            maxUnitsPerRequest,
+        } = bodyValidation.data;
+
+        const result = await pool.query(
+            `UPDATE plans
+             SET name = COALESCE($1, name),
+                 monthly_allowance =
+                     COALESCE($2, monthly_allowance),
+                 max_units_per_request =
+                     COALESCE($3, max_units_per_request)
+             WHERE id = $4
+               AND owner_account_id = $5
+             RETURNING
+                 id,
+                 name,
+                 scope,
+                 monthly_allowance AS "monthlyAllowance",
+                 max_units_per_request AS "maxUnitsPerRequest",
+                 owner_account_id AS "ownerAccountId"`,
+            [
+                name ?? null,
+                monthlyAllowance ?? null,
+                maxUnitsPerRequest ?? null,
+                planId,
+                account.id,
+            ],
+        );
+
+        const plan = result.rows[0];
+
+        if (!plan) {
+            return reply.code(404).send({
+                error: "Custom plan not found",
+            });
+        }
+
+        return reply.code(200).send({
+            plan: {
+                ...plan,
+                id: Number(plan.id),
+                ownerAccountId: Number(plan.ownerAccountId),
+                monthlyAllowance: Number(plan.monthlyAllowance),
+                maxUnitsPerRequest: Number(plan.maxUnitsPerRequest),
+                predefined: false,
+            },
+        });
+    } catch (error) {
+        const dbError = error as { code?: string };
+
+        if (dbError.code === "23505") {
+            return reply.code(409).send({
+                error: "A plan with this name and scope already exists for this account",
+            });
+        }
+
+        request.log.error(error);
+
+        return reply.code(500).send({
+            error: "Failed to update custom plan",
         });
     }
 });

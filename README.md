@@ -1,26 +1,27 @@
-
 # Usage Metering and Quota Service
 
-A TypeScript, Fastify, and PostgreSQL API for tracking unit consumption and enforcing monthly account and user quotas.
+A TypeScript, Fastify, and PostgreSQL API for tracking consumption and enforcing monthly account-level and user-level quotas.
 
 ## Features
 
-- API-key authentication for accounts.
-- Users belong to a specific account.
-- Separate account-level and user-level plans.
-- Monthly quotas based on the UTC calendar month.
-- Per-request unit limits.
-- Rejected consumption attempts are logged without consuming quota.
+- API-key authentication with SHA-256 hashed API keys stored in PostgreSQL.
+- Account-scoped users and usage data.
+- Separate account and user plans with monthly allowances and per-request limits.
+- Account-owned custom plans that can be created, updated, listed, and assigned by the owning account.
+- Predefined plans that remain read-only through the custom-plan API.
+- Account-scoped plan visibility: custom plans are not shared with unrelated accounts.
+- Monthly usage summaries for the current UTC month or a requested month.
+- Paginated consumption history, including accepted and rejected requests.
 - Request idempotency using `requestId`.
-- Account-scoped usage summaries and paginated history.
-- Protected administrative endpoints for changing plans.
-- Database migrations and seeded plans.
-- Docker Compose deployment and a runnable demo client.
-- Integration tests using Vitest.
+- Transactional consumption processing with account locking for concurrent requests.
+- Protected administrative endpoints for changing accounts' and users' plans.
+- PostgreSQL migrations and seeded predefined plans.
+- Docker Compose deployment and a runnable demonstration client.
+- Integration tests using Vitest and a k6 performance test.
 
 ## Requirements
 
-- Node.js 24 or compatible LTS release.
+- Node.js 24 or a compatible supported LTS release.
 - npm.
 - Docker Desktop with Docker Compose.
 
@@ -42,11 +43,11 @@ Remove-Variable adminKey, bytes, rng
 
 Do not commit `.env` or expose the administration key. The repository's `.gitignore` excludes `.env`.
 
-The current Docker Compose file uses demonstration database credentials and is intended for local development. Use secrets management and appropriate access controls in production.
+The Docker Compose configuration uses demonstration database credentials and is intended for local development. Use secrets management, suitable access controls, and appropriate database credentials in production.
 
 ## Run with Docker Compose
 
-Start the database, apply migrations, and start the API:
+Start the database and API:
 
 ```powershell
 docker compose up -d --build db app
@@ -65,15 +66,28 @@ Invoke-RestMethod http://localhost:3000/health
 Invoke-RestMethod http://localhost:3000/health/db
 ```
 
-The API listens on port `3000`. PostgreSQL is published on host port `5433` and listens on port `5432` inside the Compose network.
+The API listens on port `3000`. PostgreSQL is published on host port `5433` and listens on port `5432` inside the Compose network. The Compose configuration runs the migration service as part of starting the application.
 
-Run the example client:
+### Run the demonstration client
 
 ```powershell
-docker compose run --rm --build demo
+docker compose run --build --rm demo
 ```
 
-The demo creates an account and user, demonstrates an accepted request, user-level and account-level request-limit rejections, changes the user's plan, and retries with the upgraded plan. The expected final consumed usage in this demo is 26 units for both the account and user.
+The demo creates an account with a custom shared monthly allowance of 15 units. It creates two users with different custom plans, consumes 8 units for the first user and 7 units for the second, and verifies that an additional unit is rejected with `ACCOUNT_MONTHLY_LIMIT`.
+
+The demo then upgrades the account to `Pro Account` and the first user to `Premium User`, verifies that consumption can continue under the new plans without resetting existing usage, and prints a monthly usage summary.
+
+Expected consumption results:
+
+| Stage | Account consumed | User 1 consumed | User 2 consumed |
+|---|---:|---:|---:|
+| User 1 consumes 8 units | 8 | 8 | 0 |
+| User 2 consumes 7 units | 15 | 8 | 7 |
+| An additional unit is rejected | 15 | 8 | 7 |
+| User 1 consumes 21 units after the plan changes | 36 | 29 | 7 |
+
+The additional unit is rejected because the shared account allowance has been reached, even though the second user still has remaining user-level allowance. Rejected requests are recorded but do not increment consumption counters.
 
 Stop the services:
 
@@ -91,7 +105,7 @@ Install dependencies:
 npm.cmd ci
 ```
 
-Type-check the source:
+Run the TypeScript type check:
 
 ```powershell
 npm.cmd run typecheck
@@ -109,17 +123,19 @@ Run integration tests:
 npm.cmd test
 ```
 
-The integration tests use a database named `usage_metering_test`. Configure `DB_NAME` and the other `DB_*` environment variables appropriately before running them. The test suite checks the connected database name and refuses to proceed if it is not `usage_metering_test`.
+The integration tests use a database named `usage_metering_test`. Configure `DB_NAME` and the other `DB_*` environment variables appropriately before running them. The test suite verifies the connected database name and refuses to proceed if it is not `usage_metering_test`.
 
-Run database migrations:
+### Run database migrations
 
 ```powershell
 npm.cmd run migrate
 ```
 
-The migration command applies pending SQL migration files in sorted filename order and records applied migrations in `schema_migrations`. Ensure the database connection points to the intended database before running migrations.
+The migration command applies pending SQL migration files in sorted filename order and records applied migrations in `schema_migrations`.
 
-## Seeded plans
+**Verify the database connection before running migrations.** Ensure that the command targets the intended database. The migration files use PostgreSQL syntax.
+
+## Predefined plans
 
 | Plan | Scope | Monthly allowance | Maximum units per request |
 |---|---|---:|---:|
@@ -128,7 +144,9 @@ The migration command applies pending SQL migration files in sorted filename ord
 | Basic User | User | 1,000 | 20 |
 | Premium User | User | 10,000 | 200 |
 
-The account and user quotas both apply. A consumption request is accepted only when it passes all applicable request-size and monthly quota limits.
+Account and user limits apply simultaneously. A request is accepted only if it passes both applicable per-request limits and both monthly quota checks.
+
+Predefined plans are managed by the application and are read-only through the custom-plan endpoints. Account owners can create and update their own custom plans.
 
 ## API endpoints
 
@@ -137,15 +155,23 @@ The account and user quotas both apply. A consumption request is accepted only w
 | `POST` | `/accounts` | Create an account and receive its API key |
 | `POST` | `/accounts/me/users` | Create a user under the authenticated account |
 | `POST` | `/consumptions` | Submit a consumption request |
-| `GET` | `/usage` | Retrieve account and user usage |
-| `GET` | `/usage/history?page=1&limit=20` | Retrieve paginated account history |
-| `GET` | `/plans` | List available plans |
-| `PATCH` | `/admin/accounts/:accountId/plan` | Change an account plan |
-| `PATCH` | `/admin/users/:userId/plan` | Change a user plan |
+| `GET` | `/usage` | Retrieve the current month's account and user usage |
+| `GET` | `/usage?month=YYYY-MM` | Retrieve usage counters for a specified UTC calendar month |
+| `GET` | `/usage/history?page=1&limit=20` | Retrieve paginated account consumption history |
+| `GET` | `/plans` | List predefined plans |
+| `GET` | `/plans` with `x-api-key` | List predefined plans and the authenticated account's custom plans |
+| `POST` | `/plans` | Create a custom plan owned by the authenticated account |
+| `PATCH` | `/plans/:planId` | Update an owned custom plan |
+| `PATCH` | `/accounts/me/plan` | Assign an allowed account plan by `planId` |
+| `PATCH` | `/accounts/me/users/:userId/plan` | Assign an allowed user plan by `planId` |
+| `PATCH` | `/admin/accounts/:accountId/plan` | Change an account to a predefined plan |
+| `PATCH` | `/admin/users/:userId/plan` | Change a user to a predefined plan |
 | `GET` | `/health` | Check API health |
 | `GET` | `/health/db` | Check database connectivity |
 
-Account-scoped routes use the `x-api-key` header. Administrative plan-change routes use the `x-admin-api-key` header. Plan changes require the configured `ADMIN_API_KEY`.
+Account-scoped endpoints use the `x-api-key` header. Administrative plan-change endpoints use the `x-admin-api-key` header. Administrative operations require the configured `ADMIN_API_KEY`.
+
+### API key and account creation
 
 Example account creation:
 
@@ -160,9 +186,46 @@ $account = Invoke-RestMethod `
   } | ConvertTo-Json)
 ```
 
-Keep the returned `apiKey` private. The database stores a SHA-256 hash of the account API key rather than the raw key.
+Keep the returned `apiKey` private. The database stores a SHA-256 hash of the account API key rather than its raw value.
 
-Example consumption request:
+### Create a custom plan
+
+Custom plans belong to the account authenticated by `x-api-key`. The scope must be `account` or `user`, and both quota values must be positive whole numbers.
+
+Example user-plan creation:
+
+```powershell
+$customPlan = Invoke-RestMethod `
+  -Method Post `
+  -Uri 'http://localhost:3000/plans' `
+  -Headers @{ 'x-api-key' = $account.apiKey } `
+  -ContentType 'application/json' `
+  -Body (@{
+    name = 'Example Custom User'
+    scope = 'user'
+    monthlyAllowance = 500
+    maxUnitsPerRequest = 50
+  } | ConvertTo-Json)
+```
+
+The returned `plan.id` can be used to assign the plan to a user within the authenticated account:
+
+```powershell
+Invoke-RestMethod `
+  -Method Patch `
+  -Uri "http://localhost:3000/accounts/me/users/USER_ID/plan" `
+  -Headers @{ 'x-api-key' = $account.apiKey } `
+  -ContentType 'application/json' `
+  -Body (@{
+    planId = $customPlan.plan.id
+  } | ConvertTo-Json)
+```
+
+Replace `USER_ID` with the actual user ID returned when creating the user.
+
+An account can assign its own custom plans and applicable predefined plans. It cannot assign another account's custom plans. Custom-plan updates are restricted to their owning account; attempts to update predefined plans through `PATCH /plans/:planId` are not allowed.
+
+### Submit a consumption request
 
 ```powershell
 Invoke-RestMethod `
@@ -171,75 +234,91 @@ Invoke-RestMethod `
   -Headers @{ 'x-api-key' = $account.apiKey } `
   -ContentType 'application/json' `
   -Body (@{
-    userId = 1
+    userId = USER_ID
     units = 5
     requestId = [guid]::NewGuid().ToString()
   } | ConvertTo-Json)
 ```
 
-Use the actual `userId` returned when creating a user under that account.
+Replace `USER_ID` with a user ID belonging to the authenticated account.
+
+### Query usage for a previous month
+
+Retrieve the current month's summary:
+
+```powershell
+Invoke-RestMethod `
+  -Uri 'http://localhost:3000/usage' `
+  -Headers @{ 'x-api-key' = $account.apiKey }
+```
+
+Retrieve a specific month using the `YYYY-MM` format:
+
+```powershell
+Invoke-RestMethod `
+  -Uri 'http://localhost:3000/usage?month=2026-09' `
+  -Headers @{ 'x-api-key' = $account.apiKey }
+```
+
+An invalid month value, such as `2026-13`, returns HTTP `400`. If `month` is omitted, the endpoint defaults to the current UTC calendar month.
+
+Historical queries retrieve the stored usage counters for the requested month. **Plan names and quota values are based on the plans currently assigned to the account and users; the service does not snapshot historical plan definitions at the time of consumption.**
 
 ## Quota and request behavior
 
 - The quota period is the UTC calendar month.
-- Both account-level and user-level rules apply to each consumption request.
-- Rejected attempts are recorded and do not increment usage counters.
+- Both account-level and user-level request limits and monthly allowances apply to each consumption request.
+- A rejected request does not increment monthly consumption counters.
+- Accepted and rejected attempts are recorded in `usage_records`.
 - `requestId` provides idempotency within an account.
-- Retrying the same `requestId` with the same user and units does not consume units again.
-- Reusing a `requestId` with different request data returns a conflict.
-- Changing a plan affects future consumption decisions; it does not reset previous usage or delete history.
-- If a plan is lowered below the current usage, the remaining allowance is reported as zero and subsequent requests are subject to the new limits.
+- Repeating the same `requestId` with the same user and units does not consume units twice.
+- Reusing a `requestId` with different request data returns HTTP `409`.
+- A user must belong to the account associated with the API key.
+- Changing a plan affects future consumption decisions; it does not reset previous usage or delete consumption history.
+- If usage already exceeds a newly assigned allowance, the reported remaining allowance is zero and subsequent requests are checked against the new limits.
+- An account's monthly allowance is shared across its users.
 
 ## Data model
 
 - `accounts`: account identity, API key hash, and account plan.
 - `users`: account-owned external user identities and user plans.
-- `plans`: account and user plan definitions.
-- `monthly_usage`: monthly counters for accounts and users.
+- `plans`: predefined plan definitions and account-owned custom plan definitions.
+- `monthly_usage`: monthly consumption counters for accounts and individual users.
 - `usage_records`: accepted and rejected consumption attempts.
-- `schema_migrations`: applied database migration history.
+- `schema_migrations`: migration history.
+
+## Performance test
+
+A local performance test was executed using Grafana k6 in Docker.
+
+Performance results depend on the application version, database state, workload, and machine resources. Historical local measurements are not production capacity guarantees; rerun the test after significant changes to refresh the report.
+
+### Example recorded local run
+
+| Metric | Result |
+|---|---:|
+| HTTP requests | 4,135 |
+| Completed consumption iterations | 4,133 |
+| HTTP request failure rate | 0% |
+| Checks | 100% passed |
+
+The HTTP request total includes setup requests. These measurements were obtained in a local Docker environment and should not be interpreted as production capacity guarantees.
+
+### Run the test
+
+```powershell
+docker run --rm --mount "type=bind,source=$($PWD.Path),target=/work" -w /work grafana/k6 run --summary-export=performance/results.json performance/usage-load-test.js
+```
+
+Review the generated report before committing it. Performance artifacts must not expose raw API keys or other secrets.
 
 ## Assumptions and limitations
 
 - The service meters one resource type: units.
 - Monthly periods use the UTC calendar month.
 - Each request is accepted or rejected as a whole; partial consumption is not supported.
-- An account API key authenticates the account, and consumption can only be submitted for a user belonging to that account.
+- The account API key authenticates the account, and consumption is restricted to users belonging to that account.
+- Custom plans are private to their owning account.
+- Historical summaries do not retain historical snapshots of plan definitions.
 - The demo and seeded credentials are for local development only.
-- Performance results should be measured in the target environment and recorded with the test commands and load settings; do not treat local results as production guarantees.
-## Performance test
-
-A local performance test was executed using Grafana k6 in Docker.
-
-### Test configuration
-
-- Maximum virtual users: 2
-- Test duration: 25 seconds, excluding setup
-- Workload: repeated consumption requests of 1 unit
-- Account plan: Pro Account
-- User plan: Premium User
-
-### Measured results
-
-| Metric | Result |
-|---|---:|
-| HTTP requests | 3,986 |
-| Completed consumption iterations | 3,984 |
-| Request rate | 159.15 requests/second |
-| Average HTTP request duration | 10.44 ms |
-| Median HTTP request duration | 9.51 ms |
-| p90 HTTP request duration | 15.57 ms |
-| p95 HTTP request duration | 19.13 ms |
-| Maximum HTTP request duration | 87.74 ms |
-| HTTP request failure rate | 0% |
-| Checks passed | 7,968 |
-| Checks failed | 0 |
-
-The HTTP request total includes the two setup requests used to create
-the test account and user. The results are from a local Docker
-environment and should not be interpreted as production capacity guarantees.
-
-### Run the test
-
-```powershell
-docker run --rm --mount "type=bind,source=$($PWD.Path),target=/work" -w /work grafana/k6 run --summary-export=performance/results.json performance/usage-load-test.js
+- Performance results should be rerun in the target environment and recorded with the test commands and load settings.

@@ -125,11 +125,28 @@ async function consume(
         },
     );
 
+    const accountRemaining = Math.max(
+        0,
+        result.accountUsage.allowance -
+        result.accountUsage.consumed,
+    );
+
+    const userRemaining = Math.max(
+        0,
+        result.userUsage.allowance -
+        result.userUsage.consumed,
+    );
+
     console.log(
-        `${label}: accepted=${result.accepted}, ` +
-        `reason=${result.reason ?? "none"}, ` +
-        `accountConsumed=${result.accountUsage.consumed}, ` +
-        `userConsumed=${result.userUsage.consumed}`,
+        `\n${label}`,
+        `\n  Accepted: ${result.accepted}`,
+        `\n  Reason: ${result.reason ?? "none"}`,
+        `\n  Account quota: ${result.accountUsage.consumed}` +
+        `/${result.accountUsage.allowance}` +
+        ` consumed, ${accountRemaining} remaining`,
+        `\n  User quota: ${result.userUsage.consumed}` +
+        `/${result.userUsage.allowance}` +
+        ` consumed, ${userRemaining} remaining`,
     );
 
     return result;
@@ -142,6 +159,7 @@ async function main(): Promise<void> {
 
     await waitForService();
 
+    // Create a fresh account for an isolated demo.
     const account = await apiRequest<CreatedAccount>("/accounts", {
         method: "POST",
         body: {
@@ -150,99 +168,260 @@ async function main(): Promise<void> {
         },
     });
 
-    const user = await apiRequest<CreatedUser>("/accounts/me/users", {
+    const accountId = Number(account.account.id);
+
+    // Create and assign a custom account plan with a shared
+    // monthly allowance of 15 units.
+    const accountPlanName = `Demo Shared Account ${randomUUID()}`;
+
+    const accountPlan = await apiRequest<{
+        plan: { id: number; name: string };
+    }>("/plans", {
         method: "POST",
         apiKey: account.apiKey,
         body: {
-            externalUserId: `demo-user-${randomUUID()}`,
-            planName: "Basic User",
+            name: accountPlanName,
+            scope: "account",
+            monthlyAllowance: 15,
+            maxUnitsPerRequest: 100,
         },
     });
 
-    const userId = Number(user.user.id);
-
-    console.log("\n--- Usage Metering Demo ---");
-    console.log("Created a demo account and a Basic User.");
-
-    const accepted = await consume(
-        account.apiKey,
-        userId,
-        5,
-        "initial-accepted",
-    );
-
-    if (!accepted.accepted) {
-        throw new Error("Expected the initial request to be accepted.");
-    }
-
-    const userRejected = await consume(
-        account.apiKey,
-        userId,
-        21,
-        "user-limit",
-    );
-
-    if (
-        userRejected.accepted ||
-        userRejected.reason !== "USER_REQUEST_LIMIT"
-    ) {
-        throw new Error("Expected rejection at the user request limit.");
-    }
-
-    const accountRejected = await consume(
-        account.apiKey,
-        userId,
-        101,
-        "account-limit",
-    );
-
-    if (
-        accountRejected.accepted ||
-        accountRejected.reason !== "ACCOUNT_REQUEST_LIMIT"
-    ) {
-        throw new Error("Expected rejection at the account request limit.");
-    }
-
-    console.log("\nSwitching the user's plan to Premium User...");
-
-    await apiRequest("/admin/users/" + userId + "/plan", {
+    await apiRequest("/accounts/me/plan", {
         method: "PATCH",
-        adminKey: adminApiKey,
-        body: { planName: "Premium User" },
+        apiKey: account.apiKey,
+        body: {
+            planId: accountPlan.plan.id,
+        },
     });
 
-    console.log("Plan changed successfully. Client request code is unchanged.");
+    // Create two different user plans owned by this account.
+    const basicPlanName = `Demo Basic User ${randomUUID()}`;
+    const premiumPlanName = `Demo Premium User ${randomUUID()}`;
+
+    await apiRequest("/plans", {
+        method: "POST",
+        apiKey: account.apiKey,
+        body: {
+            name: basicPlanName,
+            scope: "user",
+            monthlyAllowance: 50,
+            maxUnitsPerRequest: 100,
+        },
+    });
+
+    await apiRequest("/plans", {
+        method: "POST",
+        apiKey: account.apiKey,
+        body: {
+            name: premiumPlanName,
+            scope: "user",
+            monthlyAllowance: 100,
+            maxUnitsPerRequest: 100,
+        },
+    });
+
+    const basicUser = await apiRequest<CreatedUser>(
+        "/accounts/me/users",
+        {
+            method: "POST",
+            apiKey: account.apiKey,
+            body: {
+                externalUserId: `demo-basic-${randomUUID()}`,
+                planName: basicPlanName,
+            },
+        },
+    );
+
+    const premiumUser = await apiRequest<CreatedUser>(
+        "/accounts/me/users",
+        {
+            method: "POST",
+            apiKey: account.apiKey,
+            body: {
+                externalUserId: `demo-premium-${randomUUID()}`,
+                planName: premiumPlanName,
+            },
+        },
+    );
+
+    const basicUserId = Number(basicUser.user.id);
+    const premiumUserId = Number(premiumUser.user.id);
+
+    console.log("\n--- Usage Metering Demo ---");
+    console.log(`Account plan: ${accountPlanName}`);
+    console.log("Shared account allowance: 15 units");
+    console.log(`User 1 plan: ${basicPlanName} (50 units)`);
+    console.log(`User 2 plan: ${premiumPlanName} (100 units)`);
+
+    // User 1 consumes 8 units.
+    const first = await consume(
+        account.apiKey,
+        basicUserId,
+        8,
+        "user-1-consumes-8",
+    );
+
+    if (
+        !first.accepted ||
+        first.accountUsage.consumed !== 8 ||
+        first.userUsage.consumed !== 8
+    ) {
+        throw new Error("Expected user 1's request to be accepted.");
+    }
+
+    // User 2 consumes the remaining 7 shared account units.
+    const second = await consume(
+        account.apiKey,
+        premiumUserId,
+        7,
+        "user-2-consumes-7",
+    );
+
+    if (
+        !second.accepted ||
+        second.accountUsage.consumed !== 15 ||
+        second.userUsage.consumed !== 7
+    ) {
+        throw new Error("Expected user 2's request to be accepted.");
+    }
+
+    // The user still has their own allowance, but the shared
+    // account allowance is exhausted.
+    const sharedLimit = await consume(
+        account.apiKey,
+        premiumUserId,
+        1,
+        "shared-account-limit",
+    );
+
+    if (
+        sharedLimit.accepted ||
+        sharedLimit.reason !== "ACCOUNT_MONTHLY_LIMIT" ||
+        sharedLimit.accountUsage.consumed !== 15 ||
+        sharedLimit.userUsage.consumed !== 7
+    ) {
+        throw new Error(
+            "Expected rejection because the shared account monthly quota is exhausted.",
+        );
+    }
+
+    console.log(
+        "\nShared monthly account quota enforced successfully.",
+    );
+
+    // Upgrade the account and user through the admin API.
+    // The consumption request itself does not change.
+    console.log("\nUpgrading the account to Pro Account...");
+
+    await apiRequest(
+        `/admin/accounts/${accountId}/plan`,
+        {
+            method: "PATCH",
+            adminKey: adminApiKey,
+            body: {
+                planName: "Pro Account",
+            },
+        },
+    );
+
+    console.log("Upgrading user 1 to Premium User...");
+
+    await apiRequest(
+        `/admin/users/${basicUserId}/plan`,
+        {
+            method: "PATCH",
+            adminKey: adminApiKey,
+            body: {
+                planName: "Premium User",
+            },
+        },
+    );
 
     const afterUpgrade = await consume(
         account.apiKey,
-        userId,
+        basicUserId,
         21,
         "after-plan-switch",
     );
 
-    if (!afterUpgrade.accepted) {
-        throw new Error("Expected the request to pass after the plan switch.");
+    if (
+        !afterUpgrade.accepted ||
+        afterUpgrade.accountUsage.consumed !== 36 ||
+        afterUpgrade.userUsage.consumed !== 29
+    ) {
+        throw new Error(
+            "Unexpected usage after upgrading the plans.",
+        );
     }
 
+    // Display the final monthly usage summary.
+    const usage = await apiRequest<{
+        monthStart: string;
+        account: {
+            consumed: number;
+            allowance: number;
+            remaining: number;
+        };
+        users: Array<{
+            id: number;
+            externalUserId: string;
+            planName: string;
+            consumed: number;
+            allowance: number;
+            remaining: number;
+        }>;
+    }>("/usage", {
+        apiKey: account.apiKey,
+    });
+
+    console.log(`\n--- Monthly Summary (${usage.monthStart}) ---`);
+
+    console.log(
+        `Account: ${usage.account.consumed}/` +
+        `${usage.account.allowance} consumed; ` +
+        `${usage.account.remaining} remaining`,
+    );
+
+    for (const user of usage.users) {
+        console.log(
+            `${user.externalUserId} | Plan: ${user.planName} | ` +
+            `${user.consumed}/${user.allowance} consumed | ` +
+            `${user.remaining} remaining`,
+        );
+    }
+
+    const finalBasicUser = usage.users.find(
+        (user) => user.id === basicUserId,
+    );
+
+    const finalPremiumUser = usage.users.find(
+        (user) => user.id === premiumUserId,
+    );
+
     if (
-        afterUpgrade.accountUsage.consumed !== 26 ||
-        afterUpgrade.userUsage.consumed !== 26
+        usage.account.consumed !== 36 ||
+        finalBasicUser?.consumed !== 29 ||
+        finalPremiumUser?.consumed !== 7
     ) {
-        throw new Error("Unexpected usage counters after the plan switch.");
+        throw new Error("Unexpected final monthly usage summary.");
     }
 
     const history = await apiRequest<{
         total: number;
-        records: Array<{
-            accepted: boolean;
-            reason: string | null;
-        }>;
-    }>("/usage/history?page=1&limit=10", {
+    }>("/usage/history?page=1&limit=20", {
         apiKey: account.apiKey,
     });
 
     console.log(`\nHistory records: ${history.total}`);
-    console.log("Demo completed successfully.");
+
+    if (history.total !== 4) {
+        throw new Error(
+            `Expected 4 consumption records, received ${history.total}.`,
+        );
+    }
+
+    console.log("\nDemo completed successfully.");
 }
 
 main().catch((error: unknown) => {

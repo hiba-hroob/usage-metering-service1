@@ -43,19 +43,21 @@ beforeAll(async () => {
     }
 
     // These plans are created only after the database safety check.
+
     await dbPool.query(
         `INSERT INTO plans
-        (name, scope, monthly_allowance, max_units_per_request)
+        (name, scope, monthly_allowance, max_units_per_request, owner_account_id)
      VALUES
-        ($1, 'account', 10, 100),
-        ($2, 'user', 10, 20),
-        ($3, 'user', 4, 20)
-     ON CONFLICT (name) DO UPDATE SET
-        scope = EXCLUDED.scope,
+        ($1, 'account', 10, 100, NULL),
+        ($2, 'user', 10, 20, NULL),
+        ($3, 'user', 4, 20, NULL)
+     ON CONFLICT (name, scope) WHERE owner_account_id IS NULL
+     DO UPDATE SET
         monthly_allowance = EXCLUDED.monthly_allowance,
         max_units_per_request = EXCLUDED.max_units_per_request`,
         [accountMonthlyPlan, userMonthlyPlan, lowAllowanceUserPlan],
     );
+
 
     await realApp.ready();
 });
@@ -582,5 +584,269 @@ describe("Usage metering API integration tests", () => {
         expect(afterUpgrade.json().userUsage.consumed).toBe(111);
     });
 
+
+
+    it("shows custom plans only to their owning account", async () => {
+        const ownerApiKey = await createAccount();
+        const otherApiKey = await createAccount();
+
+        const planName = `Custom User Plan ${randomUUID()}`;
+
+        const createResponse = await getApp().inject({
+            method: "POST",
+            url: "/plans",
+            headers: {
+                "x-api-key": ownerApiKey,
+            },
+            payload: {
+                name: planName,
+                scope: "user",
+                monthlyAllowance: 50,
+                maxUnitsPerRequest: 7,
+            },
+        });
+
+        expect(createResponse.statusCode).toBe(201);
+
+        const created = createResponse.json() as {
+            plan: {
+                id: number;
+                ownerAccountId: number;
+                predefined: boolean;
+            };
+        };
+
+        expect(created.plan.predefined).toBe(false);
+
+        const ownerResponse = await getApp().inject({
+            method: "GET",
+            url: "/plans",
+            headers: {
+                "x-api-key": ownerApiKey,
+            },
+        });
+
+        const otherResponse = await getApp().inject({
+            method: "GET",
+            url: "/plans",
+            headers: {
+                "x-api-key": otherApiKey,
+            },
+        });
+
+        const publicResponse = await getApp().inject({
+            method: "GET",
+            url: "/plans",
+        });
+
+        expect(ownerResponse.statusCode).toBe(200);
+        expect(otherResponse.statusCode).toBe(200);
+        expect(publicResponse.statusCode).toBe(200);
+
+        const ownerPlans = ownerResponse.json().plans as Array<{
+            id: number;
+            name: string;
+        }>;
+
+        const otherPlans = otherResponse.json().plans as Array<{
+            id: number;
+            name: string;
+        }>;
+
+        const publicPlans = publicResponse.json().plans as Array<{
+            id: number;
+            name: string;
+        }>;
+
+        expect(ownerPlans.some((plan) => plan.id === created.plan.id))
+            .toBe(true);
+
+        expect(otherPlans.some((plan) => plan.id === created.plan.id))
+            .toBe(false);
+
+        expect(publicPlans.some((plan) => plan.id === created.plan.id))
+            .toBe(false);
+    });
+
+
+    it("creates, updates, and assigns custom plans within the owning account", async () => {
+        const ownerKey = await createAccount();
+        const otherKey = await createAccount();
+        const userId = await createUser(ownerKey);
+
+        const accountPlanResponse = await getApp().inject({
+            method: "POST",
+            url: "/plans",
+            headers: { "x-api-key": ownerKey },
+            payload: {
+                name: `Custom Account ${randomUUID()}`,
+                scope: "account",
+                monthlyAllowance: 100,
+                maxUnitsPerRequest: 6,
+            },
+        });
+
+        expect(accountPlanResponse.statusCode).toBe(201);
+
+        const accountPlan = accountPlanResponse.json().plan as {
+            id: number;
+        };
+
+        const userPlanResponse = await getApp().inject({
+            method: "POST",
+            url: "/plans",
+            headers: { "x-api-key": ownerKey },
+            payload: {
+                name: `Custom User ${randomUUID()}`,
+                scope: "user",
+                monthlyAllowance: 8,
+                maxUnitsPerRequest: 10,
+            },
+        });
+
+        expect(userPlanResponse.statusCode).toBe(201);
+
+        const userPlan = userPlanResponse.json().plan as {
+            id: number;
+            name: string;
+        };
+
+        const updateResponse = await getApp().inject({
+            method: "PATCH",
+            url: `/plans/${userPlan.id}`,
+            headers: { "x-api-key": ownerKey },
+            payload: { monthlyAllowance: 8 },
+        });
+
+        expect(updateResponse.statusCode).toBe(200);
+        expect(updateResponse.json().plan.monthlyAllowance).toBe(8);
+
+        const forbiddenUpdate = await getApp().inject({
+            method: "PATCH",
+            url: `/plans/${userPlan.id}`,
+            headers: { "x-api-key": otherKey },
+            payload: { monthlyAllowance: 500 },
+        });
+
+        expect(forbiddenUpdate.statusCode).toBe(404);
+
+        const assignAccount = await getApp().inject({
+            method: "PATCH",
+            url: "/accounts/me/plan",
+            headers: { "x-api-key": ownerKey },
+            payload: { planId: accountPlan.id },
+        });
+
+        expect(assignAccount.statusCode).toBe(200);
+
+        const assignUser = await getApp().inject({
+            method: "PATCH",
+            url: `/accounts/me/users/${userId}/plan`,
+            headers: { "x-api-key": ownerKey },
+            payload: { planId: userPlan.id },
+        });
+
+        expect(assignUser.statusCode).toBe(200);
+
+        const first = await consume(ownerKey, userId, 5);
+        expect(first.json().accepted).toBe(true);
+
+        const accountLimit = await consume(ownerKey, userId, 7);
+        expect(accountLimit.json().accepted).toBe(false);
+        expect(accountLimit.json().reason).toBe("ACCOUNT_REQUEST_LIMIT");
+
+        const userLimit = await consume(ownerKey, userId, 4);
+        expect(userLimit.json().accepted).toBe(false);
+        expect(userLimit.json().reason).toBe("USER_MONTHLY_LIMIT");
+
+        expect(userLimit.json().accountUsage.consumed).toBe(5);
+        expect(userLimit.json().userUsage.consumed).toBe(5);
+    });
+
+    it("returns usage for a requested historical month", async () => {
+        const apiKey = await createAccount();
+        const userId = await createUser(apiKey);
+
+        const currentUsageResponse = await getApp().inject({
+            method: "GET",
+            url: "/usage",
+            headers: { "x-api-key": apiKey },
+        });
+
+        expect(currentUsageResponse.statusCode).toBe(200);
+
+        const currentUsage = currentUsageResponse.json() as {
+            account: { id: number };
+        };
+
+        const accountId = currentUsage.account.id;
+
+        const previousMonthStart = new Date(
+            Date.UTC(
+                new Date().getUTCFullYear(),
+                new Date().getUTCMonth() - 1,
+                1,
+            ),
+        ).toISOString().slice(0, 10);
+
+        if (!pool) {
+            throw new Error("Test database pool is not initialized.");
+        }
+
+        // Seed historical usage for this test account and user.
+        await pool.query(
+            `INSERT INTO monthly_usage
+                (account_id, user_id, month_start, units_consumed)
+             VALUES ($1, NULL, $2, $3)`,
+            [accountId, previousMonthStart, 7],
+        );
+
+        await pool.query(
+            `INSERT INTO monthly_usage
+                (account_id, user_id, month_start, units_consumed)
+             VALUES ($1, $2, $3, $4)`,
+            [accountId, userId, previousMonthStart, 5],
+        );
+
+        const requestedMonth = previousMonthStart.slice(0, 7);
+
+        const response = await getApp().inject({
+            method: "GET",
+            url: `/usage?month=${requestedMonth}`,
+            headers: { "x-api-key": apiKey },
+        });
+
+        expect(response.statusCode).toBe(200);
+
+        const body = response.json() as {
+            monthStart: string;
+            account: { consumed: number };
+            users: Array<{ id: number; consumed: number }>;
+        };
+
+        expect(body.monthStart).toBe(previousMonthStart);
+        expect(body.account.consumed).toBe(7);
+
+        const userUsage = body.users.find(
+            (user) => user.id === userId,
+        );
+
+        expect(userUsage?.consumed).toBe(5);
+    });
+
+    it("rejects an invalid month in the usage query", async () => {
+        const apiKey = await createAccount();
+
+        const response = await getApp().inject({
+            method: "GET",
+            url: "/usage?month=2026-13",
+            headers: { "x-api-key": apiKey },
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect(response.json().error).toBe(
+            "Invalid month format. Use YYYY-MM, for example 2026-09",
+        );
+    });
 
 });
