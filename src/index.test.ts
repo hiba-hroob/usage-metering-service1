@@ -14,6 +14,7 @@ let pool: Pool | undefined;
 
 const accountMonthlyPlan = "Integration Account Monthly Limit";
 const userMonthlyPlan = "Integration User Monthly Limit";
+const lowAllowanceUserPlan = "Integration User Low Allowance";
 
 beforeAll(async () => {
     // Select the test database before importing the application.
@@ -44,15 +45,16 @@ beforeAll(async () => {
     // These plans are created only after the database safety check.
     await dbPool.query(
         `INSERT INTO plans
-            (name, scope, monthly_allowance, max_units_per_request)
-         VALUES
-            ($1, 'account', 10, 100),
-            ($2, 'user', 10, 20)
-         ON CONFLICT (name) DO UPDATE SET
-            scope = EXCLUDED.scope,
-            monthly_allowance = EXCLUDED.monthly_allowance,
-            max_units_per_request = EXCLUDED.max_units_per_request`,
-        [accountMonthlyPlan, userMonthlyPlan],
+        (name, scope, monthly_allowance, max_units_per_request)
+     VALUES
+        ($1, 'account', 10, 100),
+        ($2, 'user', 10, 20),
+        ($3, 'user', 4, 20)
+     ON CONFLICT (name) DO UPDATE SET
+        scope = EXCLUDED.scope,
+        monthly_allowance = EXCLUDED.monthly_allowance,
+        max_units_per_request = EXCLUDED.max_units_per_request`,
+        [accountMonthlyPlan, userMonthlyPlan, lowAllowanceUserPlan],
     );
 
     await realApp.ready();
@@ -424,6 +426,95 @@ describe("Usage metering API integration tests", () => {
                 (record) => record.units === 5 && record.accepted,
             ),
         ).toBe(true);
+    });
+
+    it("does not exceed the account allowance under concurrent requests", async () => {
+        const apiKey = await createAccount(accountMonthlyPlan);
+        const userId = await createUser(apiKey);
+
+        // Send 10 requests concurrently; each requests 3 units.
+        const responses = await Promise.all(
+            Array.from({ length: 10 }, () =>
+                consume(apiKey, userId, 3),
+            ),
+        );
+
+        expect(responses.every((response) => response.statusCode === 200))
+            .toBe(true);
+
+        const results = responses.map((response) =>
+            response.json() as {
+                accepted: boolean;
+                reason: string | null;
+            },
+        );
+
+        const accepted = results.filter((result) => result.accepted);
+        const rejected = results.filter((result) => !result.accepted);
+
+        expect(accepted).toHaveLength(3);
+        expect(rejected).toHaveLength(7);
+
+        expect(
+            rejected.every(
+                (result) => result.reason === "ACCOUNT_MONTHLY_LIMIT",
+            ),
+        ).toBe(true);
+
+        const usageResponse = await getApp().inject({
+            method: "GET",
+            url: "/usage",
+            headers: { "x-api-key": apiKey },
+        });
+
+        expect(usageResponse.statusCode).toBe(200);
+
+        const usage = usageResponse.json() as {
+            account: { consumed: number };
+            users: Array<{ id: number; consumed: number }>;
+        };
+
+        const userUsage = usage.users.find((item) => item.id === userId);
+
+        expect(usage.account.consumed).toBe(9);
+        expect(userUsage?.consumed).toBe(9);
+    });
+
+
+    it("blocks usage when a downgraded plan allowance is below existing consumption", async () => {
+        const apiKey = await createAccount();
+        const userId = await createUser(apiKey, "Premium User");
+
+        const first = await consume(apiKey, userId, 5);
+
+        expect(first.statusCode).toBe(200);
+        expect(first.json().accepted).toBe(true);
+
+        const changeResponse = await getApp().inject({
+            method: "PATCH",
+            url: `/admin/users/${userId}/plan`,
+            headers: {
+                "x-admin-api-key": "integration-test-admin-key",
+            },
+            payload: {
+                planName: lowAllowanceUserPlan,
+            },
+        });
+
+        expect(changeResponse.statusCode).toBe(200);
+        expect(changeResponse.json().user.planName).toBe(
+            lowAllowanceUserPlan,
+        );
+
+        const blocked = await consume(apiKey, userId, 1);
+
+        expect(blocked.statusCode).toBe(200);
+
+        const result = blocked.json();
+
+        expect(result.accepted).toBe(false);
+        expect(result.reason).toBe("USER_MONTHLY_LIMIT");
+        expect(result.userUsage.consumed).toBe(5);
     });
 
 });
