@@ -87,3 +87,71 @@ export default function(data) {
             r.status === 200 && r.json("accepted") === true,
     });
 }
+
+function redactSecrets(value) {
+    if (Array.isArray(value)) {
+        return value.map(redactSecrets);
+    }
+
+    if (value && typeof value === "object") {
+        const clean = {};
+
+        for (const [key, child] of Object.entries(value)) {
+            const name = key.toLowerCase();
+
+            if (
+                name === "apikey" ||
+                name === "x-api-key" ||
+                name === "authorization"
+            ) {
+                continue;
+            }
+
+            clean[key] = redactSecrets(child);
+        }
+
+        return clean;
+    }
+
+    return value;
+}
+
+export function handleSummary(data) {
+    const safeData = redactSecrets(data);
+    const metrics = safeData.metrics || {};
+
+    const requests =
+        metrics.http_reqs?.values || metrics.http_reqs || {};
+
+    const duration =
+        metrics.http_req_duration?.values ||
+        metrics.http_req_duration ||
+        {};
+
+    const failures =
+        metrics.http_req_failed?.values ||
+        metrics.http_req_failed ||
+        {};
+
+    const checks =
+        metrics.checks?.values || metrics.checks || {};
+
+    const report = JSON.stringify(safeData, null, 2) + "\n";
+
+    return {
+        "performance/results.json": report,
+        stdout: [
+            "Sanitized performance results saved.",
+            `HTTP requests: ${requests.count ?? "n/a"}`,
+            `Request rate: ${typeof requests.rate === "number"
+                ? requests.rate.toFixed(2)
+                : "n/a"
+            } requests/second`,
+            `Average duration: ${duration.avg ?? "n/a"} ms`,
+            `p95 duration: ${duration["p(95)"] ?? "n/a"} ms`,
+            `HTTP failure rate: ${failures.rate ?? failures.value ?? "n/a"}`,
+            `Check rate: ${checks.rate ?? checks.value ?? "n/a"}`,
+            "Use the k6 exit status to confirm threshold success.",
+        ].join("\n") + "\n",
+    };
+}
