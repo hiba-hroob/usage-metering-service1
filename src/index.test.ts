@@ -517,4 +517,70 @@ describe("Usage metering API integration tests", () => {
         expect(result.userUsage.consumed).toBe(5);
     });
 
+
+    it("changes an account's plan without resetting usage and applies new request limits", async () => {
+        const accountResponse = await getApp().inject({
+            method: "POST",
+            url: "/accounts",
+            payload: {
+                name: `integration-test-${randomUUID()}`,
+                planName: "Starter Account",
+            },
+        });
+
+        expect(accountResponse.statusCode).toBe(201);
+
+        const createdBody = accountResponse.json() as {
+            account?: { id?: unknown };
+            apiKey?: unknown;
+        };
+
+        const accountId = createdBody.account?.id;
+
+        if (
+            (typeof accountId !== "number" &&
+                typeof accountId !== "string") ||
+            typeof createdBody.apiKey !== "string"
+        ) {
+            throw new Error("Account creation did not return its ID and API key.");
+        }
+
+        const apiKey = createdBody.apiKey;
+        const userId = await createUser(apiKey, "Premium User");
+
+        const first = await consume(apiKey, userId, 10);
+
+        expect(first.json().accepted).toBe(true);
+        expect(first.json().accountUsage.consumed).toBe(10);
+
+        const blocked = await consume(apiKey, userId, 101);
+
+        expect(blocked.statusCode).toBe(200);
+        expect(blocked.json().accepted).toBe(false);
+        expect(blocked.json().reason).toBe("ACCOUNT_REQUEST_LIMIT");
+        expect(blocked.json().accountUsage.consumed).toBe(10);
+
+        const changeResponse = await getApp().inject({
+            method: "PATCH",
+            url: `/admin/accounts/${Number(accountId)}/plan`,
+            headers: {
+                "x-admin-api-key": "integration-test-admin-key",
+            },
+            payload: {
+                planName: "Pro Account",
+            },
+        });
+
+        expect(changeResponse.statusCode).toBe(200);
+        expect(changeResponse.json().account.planName).toBe("Pro Account");
+
+        const afterUpgrade = await consume(apiKey, userId, 101);
+
+        expect(afterUpgrade.statusCode).toBe(200);
+        expect(afterUpgrade.json().accepted).toBe(true);
+        expect(afterUpgrade.json().accountUsage.consumed).toBe(111);
+        expect(afterUpgrade.json().userUsage.consumed).toBe(111);
+    });
+
+
 });
