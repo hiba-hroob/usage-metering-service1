@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="UsageMeter — API usage analytics and quota management dashboard.">
+  <title>UsageMeter — Control Center</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" aria-label="UsageMeter home">
+        <span class="brand-mark">U<span>.</span></span>
+        <span class="brand-name">usage<span>meter</span></span>
+      </a>
+
+      <div class="workspace-label">WORKSPACE</div>
+      <button class="workspace-switcher" id="workspaceButton">
+        <span class="workspace-icon">N</span>
+        <span class="workspace-copy">
+          <strong>Northstar Labs</strong>
+          <small>Developer workspace</small>
+        </span>
+        <span class="switcher-arrow">⌄</span>
+      </button>
+
+      <div class="nav-label">PLATFORM</div>
+      <nav class="navigation" aria-label="Main navigation">
+        <a class="nav-item active" href="#overview" data-page="overview">
+          <span class="nav-icon">◫</span><span>Overview</span>
+        </a>
+
+<a class="nav-item" href="./usage.html" data-page="usage">
+  <span class="nav-icon">⌁</span><span>Usage analytics</span>
+</a>
+
+        <a class="nav-item" href="#requests" data-page="requests">
+          <span class="nav-icon">⇄</span><span>Request history</span>
+          <span class="nav-count">12</span>
+        </a>
+
+<a class="nav-item" href="./users.html" data-page="users">
+  <span class="nav-icon">♙</span><span>Users &amp; accounts</span>
+</a>
+
+      <a class="nav-item" href="./plans.html" data-page="plans">
+  <span class="nav-icon">...</span>
+  <span>Plans</span>
+</a>
+      </nav>
+
+      <div class="nav-label tools-label">DEVELOPER TOOLS</div>
+      <nav class="navigation" aria-label="Developer tools">
+    <a class="nav-item" href="./api.html" data-page="api">
+  <span class="nav-icon">⌘</span><span>API explorer</span>
+</a>
+
+<a class="nav-item" href="./settings.html" data-page="settings">
+  <span class="nav-icon">⚙</span><span>Settings</span>
+</a>
+
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="support-card">
+          <span class="support-spark">✳</span>
+          <strong>Built for scale.</strong>
+          <p>Keep your usage predictable and your product growing.</p>
+          <a href="#plans" data-page="plans">Explore plans <span>↗</span></a>
+        </div>
+        <div class="profile">
+          <div class="avatar">NH</div>
+          <div class="profile-copy">
+            <strong>Workspace Admin</strong>
+            <small>Administrator</small>
+          </div>
+          <button class="icon-button" id="profileButton" aria-label="Profile options">•••</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button menu-button" id="menuButton" aria-label="Toggle navigation">☰</button>
+          <div class="breadcrumbs"><span>Workspace</span><span class="crumb-separator">/</span><strong id="breadcrumbTitle">Overview</strong></div>
+        </div>
+        <div class="topbar-actions">
+          <div class="system-status"><span class="status-dot"></span><span id="apiStatusText">Checking API</span></div>
+          <button class="icon-button notification-button" id="notificationButton" aria-label="Notifications">♧<i></i></button>
+          <div class="topbar-divider"></div>
+          <div class="top-avatar">NH</div>
+        </div>
+      </header>
+
+      <section class="page-content" id="pageContent">
+        <section class="welcome-row">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> CONTROL CENTER</div>
+            <h1>Usage, under <span>control.</span></h1>
+            <p class="page-subtitle">Your API usage at a glance. Clear insights, zero surprises.</p>
+          </div>
+          <div class="welcome-actions">
+            <button class="button button-secondary" id="refreshButton"><span class="refresh-icon">↻</span> Refresh data</button>
+            <button class="button button-primary" id="quickActionButton"><span>＋</span> Quick action</button>
+          </div>
+        </section>
+
+        <section class="notice-bar" id="demoNotice">
+          <span class="notice-icon">✦</span>
+          <span><strong>Preview workspace</strong> — sample figures are displayed until the API is connected.</span>
+          <button id="dismissNotice" aria-label="Dismiss notice">×</button>
+        </section>
+
+        <section class="metrics-grid" aria-label="Usage metrics">
+          <article class="metric-card">
+            <div class="metric-top"><span>Total requests</span><span class="metric-icon purple">⇄</span></div>
+            <div class="metric-value" id="totalRequests">24,680</div>
+            <div class="metric-foot"><span class="metric-muted">Not available</span><span>previous period</span></div>
+            <div class="mini-bars" aria-hidden="true"><i style="height:32%"></i><i style="height:45%"></i><i style="height:39%"></i><i style="height:61%"></i><i style="height:50%"></i><i style="height:73%"></i><i style="height:62%"></i><i style="height:88%"></i><i style="height:67%"></i><i style="height:100%"></i></div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>Quota consumed</span><span class="metric-icon cyan">◉</span></div>
+            <div class="metric-value"><span id="quotaPercent">68.4</span><small>%</small></div>
+            <div class="metric-foot"><span class="metric-muted" id="quotaDetail">68,400 of 100,000 units</span></div>
+            <div class="progress-track"><div class="progress-fill cyan-fill" id="quotaProgress" style="width:68.4%"></div></div>
+            <div class="metric-bottom-label"><span>Used</span><span id="quotaRemaining">31,600 remaining</span></div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>Accepted requests</span><span class="metric-icon green">✓</span></div>
+            <div class="metric-value" id="acceptedRequests">24,102</div>
+            <span class="metric-muted">Not available</span><span>success rate</span>
+            <div class="progress-track"><div class="progress-fill green-fill" style="width:97.7%"></div></div>
+            <div class="metric-bottom-label"><span>Successful</span><span>Within limits</span></div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>Rejected requests</span><span class="metric-icon orange">!</span></div>
+            <div class="metric-value" id="rejectedRequests">578</div>
+            <div class="metric-foot"><span class="metric-muted">Request statistics unavailable</span></div>
+            <div class="progress-track"><div class="progress-fill orange-fill" style="width:18%"></div></div>
+            <div class="metric-bottom-label"><span>Limit reached</span><span>Monitor usage</span></div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="panel usage-panel" id="usage">
+            <div class="panel-heading">
+              <div><h2>Usage overview</h2><p>Track request volume over time</p></div>
+              <select id="chartRange" class="select-control" aria-label="Chart time range">
+                <option value="7">Last 7 days</option>
+                <option value="14">Last 14 days</option>
+                <option value="30">Last 30 days</option>
+              </select>
+            </div>
+            <div class="chart-summary">
+              <div><span class="legend-dot violet-dot"></span> API requests <strong id="chartTotal">Not available</strong></div>
+              <div class="chart-compare"><span class="metric-muted">Not available</span> <span>comparison data unavailable</span></div>
+            </div>
+            <div class="chart-container" id="usageChart" role="img" aria-label="Illustrative API request volume chart">
+              <div class="chart-y-labels"><span>10k</span><span>7.5k</span><span>5k</span><span>2.5k</span><span>0</span></div>
+              <div class="chart-plot">
+                <div class="chart-gridlines"><i></i><i></i><i></i><i></i><i></i></div>
+                <svg viewBox="0 0 700 220" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5cf6" stop-opacity=".32"/><stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+                  <path id="chartArea" d="M0,170 C35,155 45,165 78,130 S125,145 155,105 S205,130 235,95 S285,110 315,75 S365,105 395,80 S445,100 475,50 S525,80 555,65 S605,40 630,45 S670,20 700,28 L700,220 L0,220 Z" fill="url(#chartGradient)"/>
+                  <path id="chartLine" d="M0,170 C35,155 45,165 78,130 S125,145 155,105 S205,130 235,95 S285,110 315,75 S365,105 395,80 S445,100 475,50 S525,80 555,65 S605,40 630,45 S670,20 700,28" fill="none" stroke="#9b7bff" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linecap="round"/>
+                </svg>
+                <div class="chart-x-labels" id="chartLabels"><span>Oct 11</span><span>Oct 12</span><span>Oct 13</span><span>Oct 14</span><span>Oct 15</span><span>Oct 16</span><span>Oct 17</span></div>
+              </div>
+            </div>
+            <div class="chart-footer"><span><i class="legend-dot violet-dot"></i> Requests per day</span><span>Times shown in UTC</span></div>
+          </article>
+
+          <article class="panel plan-panel" id="plans">
+            <div class="panel-heading"><div><h2>Plan & quota</h2><p>Your current subscription</p></div><span class="plan-badge">PRO PLAN</span></div>
+            <div class="plan-highlight">
+              <div class="plan-symbol">✳</div>
+              <div><strong>Pro workspace</strong><p>Built for growing applications</p></div>
+              <span class="plan-check">✓</span>
+            </div>
+            <div class="quota-row"><div><span>Monthly quota</span><strong id="planQuota">100,000 units</strong></div><div><span>Per-request limit</span><strong id="requestLimit">1,000 units</strong></div></div>
+            <div class="quota-section">
+              <div class="quota-title"><span>Monthly consumption</span><strong id="planUsageLabel">68.4%</strong></div>
+              <div class="progress-track thick"><div class="progress-fill violet-fill" id="planUsageProgress" style="width:68.4%"></div></div>
+              <div class="quota-foot"><span id="planUsed">68,400 units used</span><span id="planLeft">31,600 left</span></div>
+            </div>
+            <button class="button button-outline-full" data-page="plans">Manage plan <span>→</span></button>
+            <p class="panel-footnote"><span class="tiny-shield">◇</span> Quotas reset monthly in UTC.</p>
+          </article>
+        </section>
+
+        <section class="panel activity-panel" id="requests">
+          <div class="panel-heading activity-heading">
+            <div><h2>Recent activity</h2><p>Latest requests across your workspace</p></div>
+
+<div class="activity-actions">
+  <input
+    type="search"
+    id="requestSearch"
+    class="select-control"
+    placeholder="Search request or user..."
+    aria-label="Search usage records"
+  />
+
+  <select
+    id="statusFilter"
+    class="select-control"
+    aria-label="Filter requests by status"
+  >
+    <option value="all">All statuses</option>
+    <option value="accepted">Accepted</option>
+    <option value="rejected">Rejected</option>
+  </select>
+
+  <button
+    class="button button-secondary button-small"
+    data-page="requests"
+  >
+    View history <span>→</span>
+  </button>
+</div>
+            </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>REQUEST</th><th>USER</th><th>UNITS</th><th>STATUS</th><th>TIME (UTC)</th></tr></thead>
+         <tbody id="activityTable">
+         </tbody>
+            </table>
+          </div>
+          <div class="table-footer"><span id="activityCount">Loading real usage records...</span><button class="text-button" data-page="requests">See all activity <span>↗</span></button></div>
+        </section>
+
+        <footer class="page-footer"><span>© 2026 UsageMeter <span class="footer-separator">·</span> Usage intelligence, simplified.</span><span><i class="status-dot"></i> <span id="footerApiStatus">Connecting to service</span></span></footer>
+      </section>
+    </main>
+  </div>
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+</body>
+</html>

@@ -1,0 +1,281 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users | UsageMeter</title>
+    <link rel="stylesheet" href="./styles.css">
+
+
+    <style>
+        :root {
+            --users-bg: #080b12;
+            --users-panel: #111722;
+            --users-border: #242e3d;
+            --users-text: #f1f5f9;
+            --users-muted: #91a0b5;
+            --users-cyan: #36f5dc;
+            --users-pink: #ff5ec4;
+        }
+
+        body {
+            background: radial-gradient(ellipse at 10% 0%, #12302f 0%, transparent 36%), radial-gradient(ellipse at 95% 15%, #30152c 0%, transparent 30%), var(--users-bg);
+            color: var(--users-text);
+            min-height: 100vh;
+        }
+
+        .page-content {
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        .welcome-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+            .welcome-row h1 {
+                margin: 0 0 10px;
+                font-size: clamp(30px, 4vw, 42px);
+                font-weight: 800;
+                letter-spacing: -1px;
+                background: linear-gradient(90deg, #ffffff, var(--users-cyan));
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+            }
+
+            .welcome-row p {
+                color: var(--users-muted);
+                margin: 0;
+                line-height: 1.7;
+            }
+
+        #refreshUsers {
+            border: 1px solid #36f5dc66;
+            border-radius: 12px;
+            padding: 12px 22px;
+            background: #36f5dc12;
+            color: var(--users-cyan);
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+            #refreshUsers:hover {
+                background: var(--users-cyan);
+                color: #06100f;
+                box-shadow: 0 0 22px #36f5dc35;
+                transform: translateY(-2px);
+            }
+
+        .activity-panel {
+            background: linear-gradient(145deg, #141c29, #0d121b);
+            border: 1px solid var(--users-border);
+            border-radius: 22px;
+            padding: 26px;
+            box-shadow: 0 20px 60px #00000030;
+            overflow: hidden;
+        }
+
+        .panel-heading {
+            margin-bottom: 24px;
+        }
+
+            .panel-heading h2 {
+                color: var(--users-text);
+                font-size: 22px;
+                margin: 0 0 8px;
+            }
+
+            .panel-heading p {
+                color: var(--users-muted);
+                margin: 0;
+            }
+
+        .activity-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        #userSearch {
+            width: 100%;
+            max-width: 430px;
+            background: #080d15;
+            color: var(--users-text);
+            border: 1px solid var(--users-border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+            #userSearch::placeholder {
+                color: #6e7d91;
+            }
+
+            #userSearch:focus {
+                border-color: var(--users-cyan);
+                box-shadow: 0 0 0 3px #36f5dc15;
+            }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--users-border);
+            border-radius: 14px;
+        }
+
+            .table-container table {
+                width: 100%;
+                min-width: 680px;
+                border-collapse: collapse;
+                text-align: left;
+            }
+
+            .table-container thead {
+                background: #1a2533;
+            }
+
+            .table-container th {
+                color: var(--users-cyan);
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                padding: 18px 20px;
+                white-space: nowrap;
+            }
+
+            .table-container td {
+                color: #dce5f0;
+                padding: 18px 20px;
+                border-top: 1px solid #202a38;
+                font-size: 14px;
+            }
+
+            .table-container tbody tr {
+                transition: background 0.2s ease;
+            }
+
+                .table-container tbody tr:hover {
+                    background: #36f5dc09;
+                }
+
+                    .table-container tbody tr:hover td:first-child {
+                        color: var(--users-cyan);
+                    }
+
+        #usersTableBody td[colspan] {
+            text-align: center;
+            color: var(--users-muted);
+            padding: 38px 20px;
+        }
+
+        #usersCount {
+            color: var(--users-pink);
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
+        button:disabled {
+            opacity: 0.55;
+            cursor: wait;
+        }
+
+        @media (max-width: 700px) {
+            .page-content {
+                padding: 22px 14px;
+            }
+
+            .activity-panel {
+                padding: 16px;
+                border-radius: 16px;
+            }
+
+            .welcome-row h1 {
+                font-size: 30px;
+            }
+
+            #refreshUsers {
+                width: 100%;
+            }
+        }
+    </style>
+
+
+</head>
+<body>
+    <main class="page-content">
+        <header class="welcome-row">
+            <div>
+                <h1>Users</h1>
+                <p>View registered users and their usage information.</p>
+            </div>
+            <button id="refreshUsers" type="button">Refresh</button>
+        </header>
+
+        <section class="activity-panel">
+            <div class="panel-heading">
+                <div>
+                    <h2>Registered Users</h2>
+                    <p id="usersCount">Loading users...</p>
+                </div>
+            </div>
+
+            <div class="activity-controls">
+                <input type="search"
+                       id="userSearch"
+                       placeholder="Search by user ID or name..."
+                       aria-label="Search users">
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>External User ID</th>
+                            <th>Plan</th>
+                            <th>Allowance</th>
+                            <th>Consumed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="5">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+
+        <footer class="page-footer">
+            <div>
+                <span class="footer-brand">UsageMeter</span>
+                — Usage Metering Service
+            </div>
+            <div>
+                Monitor usage. Manage limits. Track consumption.
+            </div>
+            <div>
+                © 2026 UsageMeter. All rights reserved.
+            </div>
+        </footer>
+
+    </main>
+
+    <script src="./js/users.js"></script>
+</body>
+
+
+</html>

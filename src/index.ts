@@ -2,6 +2,7 @@ import Fastify, {
     type FastifyReply,
     type FastifyRequest,
 } from "fastify";
+import cors from "@fastify/cors";
 import {
     createHash,
     randomBytes,
@@ -14,6 +15,12 @@ export const app = Fastify({
     logger: true,
 });
 
+app.register(cors, {
+    origin: [
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+    ],
+});
 
 const authorizeAdmin = (
     request: FastifyRequest,

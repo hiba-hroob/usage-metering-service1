@@ -1,0 +1,248 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings | UsageMeter</title>
+    <link rel="stylesheet" href="./styles.css">
+
+    <style>
+        .settings-page {
+            max-width: 1100px;
+            margin: auto;
+            padding: 38px 24px;
+            color: #f4f4f8;
+        }
+
+        .settings-header {
+            margin-bottom: 30px;
+        }
+
+        .settings-eyebrow {
+            color: #ff82d2;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 3px;
+        }
+
+        .settings-header h1 {
+            margin: 10px 0;
+            font-size: clamp(30px, 5vw, 42px);
+            background: linear-gradient(90deg, #54f5d0, #ff65c5);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .settings-header p,
+        .settings-description {
+            color: #a9a9ba;
+            line-height: 1.7;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .settings-card {
+            padding: 24px;
+            border: 1px solid #54f5d035;
+            border-radius: 18px;
+            background: linear-gradient(145deg, #151a20, #101116);
+            box-shadow: 0 8px 28px #00000020;
+            transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+        }
+
+            .settings-card:hover {
+                transform: translateY(-3px);
+                border-color: #ff65c5;
+                box-shadow: 0 10px 28px #ff65c515;
+            }
+
+            .settings-card h2 {
+                margin: 0 0 10px;
+                color: #54f5d0;
+                font-size: 19px;
+            }
+
+        .settings-description {
+            font-size: 13px;
+        }
+
+        .settings-link {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 10px 14px;
+            border: 1px solid #ff65c570;
+            border-radius: 9px;
+            color: #ff82d2;
+            text-decoration: none;
+            font-weight: 700;
+            transition: .2s ease;
+        }
+
+            .settings-link:hover {
+                color: #54f5d0;
+                border-color: #54f5d0;
+            }
+
+        .service-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 0;
+            border-top: 1px solid #ffffff12;
+            color: #d9d9e3;
+            font-size: 14px;
+        }
+
+        .service-value {
+            color: #54f5d0;
+        }
+
+        .security-note {
+            margin-top: 16px;
+            padding: 13px;
+            border: 1px solid #ff65c535;
+            border-radius: 10px;
+            background: #ff65c50b;
+            color: #c6c6d2;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+            .security-note strong {
+                color: #ff82d2;
+            }
+
+        .settings-footer {
+            margin-top: 42px;
+            padding: 22px 10px;
+            text-align: center;
+            color: #9696a8;
+            border-top: 1px solid #ffffff12;
+            font-size: 12px;
+            line-height: 1.9;
+        }
+
+        .footer-brand {
+            color: #ff82d2;
+            font-weight: 800;
+        }
+
+        @media (max-width: 700px) {
+            .settings-page {
+                padding: 24px 15px;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .settings-card {
+                padding: 19px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .settings-card, .settings-link {
+                transition: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="settings-page">
+        <header class="settings-header">
+            <div class="settings-eyebrow">WORKSPACE INFORMATION</div>
+            <h1>Settings</h1>
+            <p>Service status, documentation, security, and project information.</p>
+        </header>
+
+        <div class="settings-grid">
+            <section class="settings-card">
+                <h2>🟢 Service Status</h2>
+                <p class="settings-description">
+                    Check whether the UsageMeter API and database are reachable.
+                </p>
+
+                <div class="service-row">
+                    <span>API service</span>
+                    <span class="service-value" id="apiStatus">Checking...</span>
+                </div>
+                <div class="service-row">
+                    <span>Database</span>
+                    <span class="service-value" id="dbStatus">Checking...</span>
+                </div>
+            </section>
+
+
+            <section class="settings-card">
+                <h2>📘 API Documentation</h2>
+                <p class="settings-description">
+                    Find available endpoints, request methods, and authentication requirements.
+                </p>
+
+                <div class="service-row">
+                    <span>Available endpoints</span>
+                    <span class="service-value">Health, Plans, Usage</span>
+                </div>
+
+                <div class="service-row">
+                    <span>Authentication</span>
+                    <span class="service-value">API Key</span>
+                </div>
+
+                <a class="settings-link" href="./api.html">
+                    Explore Endpoints ↗
+                </a>
+            </section>
+
+
+            <section class="settings-card">
+                <h2>🔐 Security Information</h2>
+                <p class="settings-description">
+                    Keep account credentials and API keys protected.
+                </p>
+                <div class="security-note">
+                    <strong>Important:</strong> Never commit real API keys to Git or
+                    place secret keys in public frontend JavaScript. Send authenticated
+                    requests through an appropriate trusted client or backend.
+                </div>
+            </section>
+
+            <section class="settings-card">
+                <h2>💎 About UsageMeter</h2>
+                <p class="settings-description">
+                    UsageMeter is a usage metering service for tracking consumption,
+                    managing usage plans, and reviewing usage history.
+                </p>
+                <div class="service-row">
+                    <span>Application</span>
+                    <span class="service-value">UsageMeter</span>
+                </div>
+                <div class="service-row">
+                    <span>API endpoint</span>
+                    <span>localhost:3000</span>
+                </div>
+                <div class="service-row">
+                    <span>Project version</span>
+                    <span>Not specified</span>
+                </div>
+            </section>
+        </div>
+
+        <footer class="settings-footer">
+            <div><span class="footer-brand">UsageMeter</span> — Usage Metering Service</div>
+            <div>Monitor usage. Manage limits. Track consumption.</div>
+            <div>© 2026 UsageMeter. All rights reserved.</div>
+        </footer>
+    </main>
+
+    <script src="./js/settings.js"></script>
+</body>
+</html>

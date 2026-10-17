@@ -1,0 +1,153 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plans | UsageMeter</title>
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .plans-page {
+            padding: 32px;
+            color: #f4f7fb;
+        }
+
+        .plans-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+        }
+
+            .plans-header h1 {
+                margin: 0 0 8px;
+            }
+
+            .plans-header p, .plan-description {
+                color: #9ba8b8;
+            }
+
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .plan-card {
+            background: #101720;
+            border: 1px solid #263744;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 0 18px #00f0b515;
+        }
+
+            .plan-card h2 {
+                margin-top: 0;
+                color: #54f5d0;
+            }
+
+        .plan-limit {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 20px 0 6px;
+        }
+
+        .plan-unit {
+            color: #9ba8b8;
+            font-size: 13px;
+        }
+
+        .plan-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: #54f5d0;
+            background: #54f5d015;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .plan-message {
+            color: #9ba8b8;
+            margin: 20px 0;
+        }
+
+        .plan-refresh {
+            border: 1px solid #54f5d0;
+            color: #54f5d0;
+            background: transparent;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+            .plan-refresh:hover {
+                background: #54f5d015;
+            }
+
+
+        /* Smooth plan card interaction */
+        .plan-card {
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+            .plan-card:hover {
+                transform: translateY(-5px);
+                border-color: #54f5d0;
+                box-shadow: 0 10px 30px #54f5d025;
+            }
+
+            .plan-card.is-selected {
+                transform: translateY(-8px);
+                border-color: #54f5d0;
+                box-shadow: 0 12px 32px #54f5d030, 0 0 0 1px #54f5d040;
+            }
+
+        @media (prefers-reduced-motion: reduce) {
+            .plan-card {
+                transition: none;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <main class="plans-page">
+        <header class="plans-header">
+            <div>
+                <h1>Plans</h1>
+                <p>View available plans and their usage limits.</p>
+            </div>
+            <button class="plan-refresh" id="refreshPlans">Refresh plans</button>
+        </header>
+
+        <div id="plansMessage" class="plan-message" role="status">
+            Loading plans...
+        </div>
+
+        <section id="plansGrid" class="plans-grid" aria-live="polite"></section>
+
+
+        <footer class="page-footer">
+            <div>
+                <span class="footer-brand">UsageMeter</span>
+                — Usage Metering Service
+            </div>
+            <div>
+                Monitor usage. Manage limits. Track consumption.
+            </div>
+            <div>
+                © 2026 UsageMeter. All rights reserved.
+            </div>
+        </footer>
+
+
+    </main>
+
+    <script src="./js/plans.js"></script>
+</body>
+</html>
