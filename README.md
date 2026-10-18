@@ -323,4 +323,4 @@ Review the generated report before committing it. Performance artifacts must not
 - Custom plans are private to their owning account.
 - Historical summaries do not retain historical snapshots of plan definitions.
 - The demo and seeded credentials are for local development only.
-- Performance results should be rerun in the target environment and recorded with the test commands and load settings.لل
+- Performance results should be rerun in the target environment and recorded with the test commands and load settings.
