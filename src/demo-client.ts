@@ -40,14 +40,20 @@ async function waitForService(): Promise<void> {
                 console.log("Service and database are ready.");
                 return;
             }
-        } catch {
-            // The service may still be starting.
+
+            console.log(`Waiting for service... HTTP ${response.status}`);
+        } catch (error) {
+            console.log(
+                `Waiting for service... attempt ${attempt}/30`,
+            );
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    throw new Error("Service did not become ready within 30 seconds.");
+    throw new Error(
+        `Service did not become ready at ${baseUrl}/health/db`,
+    );
 }
 
 async function apiRequest<T>(
@@ -73,7 +79,7 @@ async function apiRequest<T>(
         headers["content-type"] = "application/json";
     }
 
-    const response = await fetch(`${baseUrl}${path}`, {
+    const response = await fetch(`${ baseUrl }${ path }`, {
         method: options.method ?? "GET",
         headers,
         ...(options.body !== undefined
@@ -99,7 +105,7 @@ async function apiRequest<T>(
                 : response.statusText;
 
         throw new Error(
-            `${options.method ?? "GET"} ${path}: HTTP ${response.status} - ${errorMessage}`,
+            `${ options.method ?? "GET" } ${ path }: HTTP ${ response.status } -${ errorMessage }`,
         );
     }
 
@@ -120,7 +126,7 @@ async function consume(
             body: {
                 userId,
                 units,
-                requestId: `${label}-${randomUUID()}`,
+                requestId: `${ label } -${ randomUUID() }`,
             },
         },
     );
@@ -128,25 +134,25 @@ async function consume(
     const accountRemaining = Math.max(
         0,
         result.accountUsage.allowance -
-        result.accountUsage.consumed,
+            result.accountUsage.consumed,
     );
 
     const userRemaining = Math.max(
         0,
         result.userUsage.allowance -
-        result.userUsage.consumed,
+            result.userUsage.consumed,
     );
 
     console.log(
-        `\n${label}`,
-        `\n  Accepted: ${result.accepted}`,
-        `\n  Reason: ${result.reason ?? "none"}`,
-        `\n  Account quota: ${result.accountUsage.consumed}` +
-        `/${result.accountUsage.allowance}` +
-        ` consumed, ${accountRemaining} remaining`,
-        `\n  User quota: ${result.userUsage.consumed}` +
-        `/${result.userUsage.allowance}` +
-        ` consumed, ${userRemaining} remaining`,
+        `\n${ label }`,
+        `\n  Accepted: ${ result.accepted }`,
+        `\n  Reason: ${ result.reason ?? "none" }`,
+        `\n  Account quota: ${ result.accountUsage.consumed }` +
+            `/ ${ result.accountUsage.allowance }` +
+            ` consumed, ${ accountRemaining } remaining`,
+        `\n  User quota: ${ result.userUsage.consumed }` +
+            `/ ${ result.userUsage.allowance }` +
+            ` consumed, ${ userRemaining } remaining`,
     );
 
     return result;
@@ -163,7 +169,7 @@ async function main(): Promise<void> {
     const account = await apiRequest<CreatedAccount>("/accounts", {
         method: "POST",
         body: {
-            name: `demo-${randomUUID()}`,
+            name: `demo - ${ randomUUID() }`,
             planName: "Starter Account",
         },
     });
@@ -172,7 +178,7 @@ async function main(): Promise<void> {
 
     // Create and assign a custom account plan with a shared
     // monthly allowance of 15 units.
-    const accountPlanName = `Demo Shared Account ${randomUUID()}`;
+    const accountPlanName = `Demo Shared Account ${ randomUUID() }`;
 
     const accountPlan = await apiRequest<{
         plan: { id: number; name: string };
@@ -196,8 +202,8 @@ async function main(): Promise<void> {
     });
 
     // Create two different user plans owned by this account.
-    const basicPlanName = `Demo Basic User ${randomUUID()}`;
-    const premiumPlanName = `Demo Premium User ${randomUUID()}`;
+    const basicPlanName = `Demo Basic User ${ randomUUID() }`;
+    const premiumPlanName = `Demo Premium User ${ randomUUID() }`;
 
     await apiRequest("/plans", {
         method: "POST",
@@ -205,7 +211,7 @@ async function main(): Promise<void> {
         body: {
             name: basicPlanName,
             scope: "user",
-            monthlyAllowance: 50,
+            monthlyAllowance: 10,
             maxUnitsPerRequest: 100,
         },
     });
@@ -227,7 +233,7 @@ async function main(): Promise<void> {
             method: "POST",
             apiKey: account.apiKey,
             body: {
-                externalUserId: `demo-basic-${randomUUID()}`,
+                externalUserId: `demo - basic - ${ randomUUID() }`,
                 planName: basicPlanName,
             },
         },
@@ -239,7 +245,7 @@ async function main(): Promise<void> {
             method: "POST",
             apiKey: account.apiKey,
             body: {
-                externalUserId: `demo-premium-${randomUUID()}`,
+                externalUserId: `demo - premium - ${ randomUUID() }`,
                 planName: premiumPlanName,
             },
         },
@@ -249,10 +255,10 @@ async function main(): Promise<void> {
     const premiumUserId = Number(premiumUser.user.id);
 
     console.log("\n--- Usage Metering Demo ---");
-    console.log(`Account plan: ${accountPlanName}`);
+    console.log(`Account plan: ${ accountPlanName }`);
     console.log("Shared account allowance: 15 units");
-    console.log(`User 1 plan: ${basicPlanName} (50 units)`);
-    console.log(`User 2 plan: ${premiumPlanName} (100 units)`);
+    console.log(`User 1 plan: ${ basicPlanName } (10 units)`);
+    console.log(`User 2 plan: ${ premiumPlanName } (100 units)`);
 
     // User 1 consumes 8 units.
     const first = await consume(
@@ -270,6 +276,30 @@ async function main(): Promise<void> {
         throw new Error("Expected user 1's request to be accepted.");
     }
 
+    // User 1 tries to exceed their own monthly allowance.
+    // The account still has enough shared allowance for this request.
+    const userLimit = await consume(
+        account.apiKey,
+        basicUserId,
+        3,
+        "user-monthly-limit",
+    );
+
+    if (
+        userLimit.accepted ||
+        userLimit.reason !== "USER_MONTHLY_LIMIT" ||
+        userLimit.accountUsage.consumed !== 8 ||
+        userLimit.userUsage.consumed !== 8
+    ) {
+        throw new Error(
+            "Expected rejection because user 1's monthly quota is exhausted.",
+        );
+    }
+
+    console.log(
+        "\nUser monthly quota enforced successfully without consuming extra units.",
+    );
+
     // User 2 consumes the remaining 7 shared account units.
     const second = await consume(
         account.apiKey,
@@ -286,7 +316,7 @@ async function main(): Promise<void> {
         throw new Error("Expected user 2's request to be accepted.");
     }
 
-    // The user still has their own allowance, but the shared
+    // User 2 still has their own allowance, but the shared
     // account allowance is exhausted.
     const sharedLimit = await consume(
         account.apiKey,
@@ -316,112 +346,112 @@ async function main(): Promise<void> {
 
     await apiRequest(
         `/admin/accounts/${accountId}/plan`,
-        {
-            method: "PATCH",
-            adminKey: adminApiKey,
+{
+    method: "PATCH",
+        adminKey: adminApiKey,
             body: {
-                planName: "Pro Account",
+        planName: "Pro Account",
             },
+},
+    );
+
+console.log("Upgrading user 1 to Premium User...");
+
+await apiRequest(
+    `/admin/users/${basicUserId}/plan`,
+    {
+        method: "PATCH",
+        adminKey: adminApiKey,
+        body: {
+            planName: "Premium User",
         },
+    },
+);
+
+const afterUpgrade = await consume(
+    account.apiKey,
+    basicUserId,
+    21,
+    "after-plan-switch",
+);
+
+if (
+    !afterUpgrade.accepted ||
+    afterUpgrade.accountUsage.consumed !== 36 ||
+    afterUpgrade.userUsage.consumed !== 29
+) {
+    throw new Error(
+        "Unexpected usage after upgrading the plans.",
     );
+}
 
-    console.log("Upgrading user 1 to Premium User...");
+// Display the final monthly usage summary.
+const usage = await apiRequest<{
+    monthStart: string;
+    account: {
+        consumed: number;
+        allowance: number;
+        remaining: number;
+    };
+    users: Array<{
+        id: number;
+        externalUserId: string;
+        planName: string;
+        consumed: number;
+        allowance: number;
+        remaining: number;
+    }>;
+}>("/usage", {
+    apiKey: account.apiKey,
+});
 
-    await apiRequest(
-        `/admin/users/${basicUserId}/plan`,
-        {
-            method: "PATCH",
-            adminKey: adminApiKey,
-            body: {
-                planName: "Premium User",
-            },
-        },
-    );
+console.log(`\n--- Monthly Summary (${usage.monthStart}) ---`);
 
-    const afterUpgrade = await consume(
-        account.apiKey,
-        basicUserId,
-        21,
-        "after-plan-switch",
-    );
+console.log(
+    `Account: ${usage.account.consumed}/` +
+    `${usage.account.allowance} consumed; ` +
+    `${usage.account.remaining} remaining`,
+);
 
-    if (
-        !afterUpgrade.accepted ||
-        afterUpgrade.accountUsage.consumed !== 36 ||
-        afterUpgrade.userUsage.consumed !== 29
-    ) {
-        throw new Error(
-            "Unexpected usage after upgrading the plans.",
-        );
-    }
-
-    // Display the final monthly usage summary.
-    const usage = await apiRequest<{
-        monthStart: string;
-        account: {
-            consumed: number;
-            allowance: number;
-            remaining: number;
-        };
-        users: Array<{
-            id: number;
-            externalUserId: string;
-            planName: string;
-            consumed: number;
-            allowance: number;
-            remaining: number;
-        }>;
-    }>("/usage", {
-        apiKey: account.apiKey,
-    });
-
-    console.log(`\n--- Monthly Summary (${usage.monthStart}) ---`);
-
+for (const user of usage.users) {
     console.log(
-        `Account: ${usage.account.consumed}/` +
-        `${usage.account.allowance} consumed; ` +
-        `${usage.account.remaining} remaining`,
+        `${user.externalUserId} | Plan: ${user.planName} | ` +
+        `${user.consumed}/${user.allowance} consumed | ` +
+        `${user.remaining} remaining`,
     );
+}
 
-    for (const user of usage.users) {
-        console.log(
-            `${user.externalUserId} | Plan: ${user.planName} | ` +
-            `${user.consumed}/${user.allowance} consumed | ` +
-            `${user.remaining} remaining`,
-        );
-    }
+const finalBasicUser = usage.users.find(
+    (user) => user.id === basicUserId,
+);
 
-    const finalBasicUser = usage.users.find(
-        (user) => user.id === basicUserId,
+const finalPremiumUser = usage.users.find(
+    (user) => user.id === premiumUserId,
+);
+
+if (
+    usage.account.consumed !== 36 ||
+    finalBasicUser?.consumed !== 29 ||
+    finalPremiumUser?.consumed !== 7
+) {
+    throw new Error("Unexpected final monthly usage summary.");
+}
+
+const history = await apiRequest<{
+    total: number;
+}>("/usage/history?page=1&limit=20", {
+    apiKey: account.apiKey,
+});
+
+console.log(`\nHistory records: ${history.total}`);
+
+if (history.total !== 5) {
+    throw new Error(
+        `Expected 5 consumption records, received ${history.total}.`,
     );
+}
 
-    const finalPremiumUser = usage.users.find(
-        (user) => user.id === premiumUserId,
-    );
-
-    if (
-        usage.account.consumed !== 36 ||
-        finalBasicUser?.consumed !== 29 ||
-        finalPremiumUser?.consumed !== 7
-    ) {
-        throw new Error("Unexpected final monthly usage summary.");
-    }
-
-    const history = await apiRequest<{
-        total: number;
-    }>("/usage/history?page=1&limit=20", {
-        apiKey: account.apiKey,
-    });
-
-    console.log(`\nHistory records: ${history.total}`);
-
-    if (history.total !== 4) {
-        throw new Error(
-            `Expected 4 consumption records, received ${history.total}.`,
-        );
-    }
-
-    console.log("\nDemo completed successfully.");
+console.log("\nDemo completed successfully.");
 }
 
 main().catch((error: unknown) => {

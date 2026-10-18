@@ -291,7 +291,30 @@ Historical queries retrieve the stored usage counters for the requested month. *
 
 A local performance test was executed using Grafana k6 in Docker.
 
-Performance results depend on the application version, database state, workload, and machine resources. Historical local measurements are not production capacity guarantees; rerun the test after significant changes to refresh the report.
+Performance results depend on the application version, database state, workload, and machine resources. These local measurements are not production capacity guarantees. Rerun the test after significant changes to refresh the report.
+
+### Example recorded local run
+
+| Metric | Result |
+|---|---:|
+| Test duration | 25.04 seconds |
+| Maximum virtual users | 2 |
+| HTTP requests | 5,110 |
+| Completed consumption iterations | 5,108 |
+| Average HTTP request duration | 8.12 ms |
+| Median HTTP request duration | 7.88 ms |
+| 95th percentile HTTP request duration | 12.64 ms |
+| HTTP request failure rate | 0% |
+| Checks passed | 100% (10,216 passed, 0 failed) |
+
+The HTTP request total includes setup requests, while completed iterations represent consumption operations. All 5,108 consumption iterations passed the HTTP 200 and acceptance checks during this recorded run.
+
+These measurements were obtained in a local Docker environment with up to two virtual users and should not be interpreted as production capacity guarantees.
+
+### Run the test
+
+```powershell
+docker run --rm --mount "type=bind,source=$($PWD.Path),target=/work" -w /work grafana/k6 run --summary-export=performance/results.json performance/usage-load-test.js
 
 ### Example recorded local run
 
