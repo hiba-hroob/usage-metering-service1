@@ -7,3 +7,12 @@ dist/
 request-*.json
 
 .secrets/
+# .NET build artifacts
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+
+# Local development settings
+**/appsettings.Development.json

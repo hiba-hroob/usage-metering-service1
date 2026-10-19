@@ -1,0 +1,165 @@
+﻿
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Users";
+}
+
+<section class="section-heading">
+    <span class="eyebrow">ACCOUNT MANAGEMENT</span>
+    <h2>Manage your users.</h2>
+    <p>Create and manage users connected to your usage-metering account.</p>
+</section>
+
+@if (TempData["Success"] is string success)
+{
+    <article class="feature-card" style="border-color: #2dd4a8;">
+        <p>@success</p>
+    </article>
+}
+
+@if (TempData["Error"] is string error)
+{
+    <article class="feature-card" style="border-color: #fb7185;">
+        <p>@error</p>
+    </article>
+}
+
+@if (ViewBag.Message is string message)
+{
+    <article class="feature-card">
+        <p>@message</p>
+    </article>
+}
+
+<section class="feature-card users-create-card">
+    <div>
+        <span class="eyebrow">NEW USER</span>
+        <h3>Add a user</h3>
+        <p>Create a user under your current account.</p>
+    </div>
+
+    <form asp-controller="Users"
+          asp-action="Create"
+          method="post"
+          class="users-create-form">
+        @Html.AntiForgeryToken()
+
+
+<input type="text"
+       name="externalUserId"
+       placeholder="External user ID"
+       maxlength="150"
+       required />
+
+<input type="text"
+       name="planName"
+       placeholder="Plan name (default: Basic User)"
+       value="Basic User"
+       maxlength="100"
+       required />
+
+
+        <button type="submit" class="btn-primary">
+            Create user
+        </button>
+    </form>
+</section>
+
+<section class="users-list-section">
+    <div class="section-heading">
+        <span class="eyebrow">DIRECTORY</span>
+        <h3>Your users</h3>
+    </div>
+
+
+@if (ViewBag.Users is JsonElement response)
+{
+    JsonElement users = default;
+    bool foundUsers = false;
+
+    if (response.ValueKind == JsonValueKind.Array)
+    {
+        users = response;
+        foundUsers = true;
+    }
+    else if (response.ValueKind == JsonValueKind.Object)
+    {
+        foreach (var propertyName in new[] { "users", "data" })
+        {
+            if (response.TryGetProperty(propertyName, out var value)
+                && value.ValueKind == JsonValueKind.Array)
+            {
+                users = value;
+                foundUsers = true;
+                break;
+            }
+        }
+    }
+
+    if (foundUsers && users.GetArrayLength() > 0)
+    {
+        <div class="feature-grid">
+            @foreach (var user in users.EnumerateArray())
+            {
+                var userId = "â€”";
+                var externalUserId = "â€”";
+                var planName = "â€”";
+
+                if (user.ValueKind == JsonValueKind.Object)
+                {
+                    if (user.TryGetProperty("id", out var idValue))
+                    {
+                        userId = idValue.ToString();
+                    }
+
+                    if (user.TryGetProperty("external_user_id", out var externalValue)
+                        || user.TryGetProperty("externalUserId", out externalValue))
+                    {
+                        externalUserId = externalValue.ToString();
+                    }
+
+                    if (user.TryGetProperty("plan_name", out var planValue)
+                        || user.TryGetProperty("planName", out planValue))
+                    {
+                        planName = planValue.ToString();
+                    }
+                }
+
+                <article class="feature-card user-card">
+                    <span class="eyebrow">ACCOUNT USER</span>
+                    <h3>@externalUserId</h3>
+
+                    <div class="plan-detail">
+                        <span>Database ID</span>
+                        <strong>@userId</strong>
+                    </div>
+
+                    <div class="plan-detail">
+                        <span>External User ID</span>
+                        <strong>@externalUserId</strong>
+                    </div>
+
+                    <div class="plan-detail">
+                        <span>Plan</span>
+                        <strong>@planName</strong>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+    else if (foundUsers)
+    {
+        <article class="feature-card">
+            <p>No users yet. Create your first user above.</p>
+        </article>
+    }
+    else
+    {
+        <article class="feature-card">
+            <p>The API response does not contain a recognized users list.</p>
+        </article>
+    }
+}
+
+</section>

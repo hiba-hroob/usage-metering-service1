@@ -1,0 +1,48 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090b14" />
+    <meta name="description" content="UsageMeter — API usage monitoring and quota management." />
+    <title>@ViewData["Title"] · UsageMeter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="site-shell">
+        <header class="site-header">
+            <a class="brand" asp-controller="Home" asp-action="Index">
+                <span class="brand-mark">U<span>.</span></span>
+                <span class="brand-name">usage<span>meter</span></span>
+            </a>
+
+            <nav class="header-nav" aria-label="Main navigation">
+                <a asp-controller="Home" asp-action="Index">Home</a>
+                <a asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                <a asp-controller="Users" asp-action="Index">Users</a>
+                <a asp-controller="Consumption" asp-action="Index">Consume Usage</a>
+                <a asp-controller="Plans" asp-action="Index">Plans</a>
+                <a asp-controller="ApiExplorer" asp-action="Index">API Explorer</a>
+            </nav>
+
+            <a class="header-cta" asp-controller="Dashboard" asp-action="Index">
+                Open workspace <span>↗</span>
+            </a>
+        </header>
+
+        <main role="main">
+            @RenderBody()
+        </main>
+
+        <footer class="site-footer">
+            <span>© @DateTime.Now.Year UsageMeter</span>
+            <span>API usage monitoring · Quota management</span>
+        </footer>
+    </div>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

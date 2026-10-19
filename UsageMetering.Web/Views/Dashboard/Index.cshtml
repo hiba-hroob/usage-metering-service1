@@ -1,0 +1,94 @@
+
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Dashboard";
+    var usage = ViewBag.Usage as JsonElement?;
+}
+
+<section class="section-heading">
+    <span class="eyebrow">WORKSPACE</span>
+    <h2>Your usage dashboard</h2>
+    <p>Connect your account to monitor API consumption and quotas.</p>
+</section>
+
+@if (TempData["Error"] is string error)
+{
+    <div class="feature-card">
+        <p>@error</p>
+    </div>
+}
+
+@if (TempData["NewApiKey"] is string newKey)
+{
+    <div class="bottom-banner">
+        <div>
+            <span class="eyebrow">ACCOUNT CREATED</span>
+            <h2>Save your API key now</h2>
+            <p>This key is shown once here. Store it securely.</p>
+            <code id="newApiKey">@newKey</code>
+            <p>
+                <button type="button" class="btn-primary"
+                        onclick="navigator.clipboard.writeText(document.getElementById('newApiKey').innerText)">
+                    Copy API key
+                </button>
+            </p>
+        </div>
+    </div>
+}
+
+@if (ViewBag.Connected == true && usage.HasValue)
+{
+    var data = usage.GetValueOrDefault();
+    <div class="feature-grid">
+        <article class="feature-card">
+            <span class="eyebrow">ACCOUNT</span>
+            <h3>@data.GetProperty("account").GetProperty("name").GetString()</h3>
+            <p>Your connected workspace</p>
+        </article>
+        <article class="feature-card">
+            <span class="eyebrow">CONSUMED</span>
+            <h3>@data.GetProperty("account").GetProperty("consumed").ToString()</h3>
+            <p>Usage in the selected month</p>
+        </article>
+        <article class="feature-card">
+            <span class="eyebrow">ALLOWANCE</span>
+            <h3>@data.GetProperty("account").GetProperty("allowance").ToString()</h3>
+            <p>Monthly usage allowance</p>
+        </article>
+        <article class="feature-card">
+            <span class="eyebrow">REMAINING</span>
+            <h3>@data.GetProperty("account").GetProperty("remaining").ToString()</h3>
+            <p>Available usage remaining</p>
+        </article>
+    </div>
+
+    <form asp-controller="Dashboard" asp-action="Disconnect" method="post">
+        @Html.AntiForgeryToken()
+        <button class="btn-secondary" type="submit">Disconnect account</button>
+    </form>
+}
+else
+{
+    @if (ViewBag.Error is string apiError)
+    {
+        <div class="feature-card"><p>@apiError</p></div>
+    }
+
+    <section class="bottom-banner">
+        <div>
+            <span class="eyebrow">GET STARTED</span>
+            <h2>Create your workspace</h2>
+            <p>Create an API account to start monitoring usage and quotas.</p>
+
+            <form asp-controller="Dashboard" asp-action="CreateAccount" method="post">
+                @Html.AntiForgeryToken()
+                <label for="name">Workspace name</label>
+                <input id="name" name="name" required maxlength="100"
+                       placeholder="e.g. My Development Team" />
+                <button type="submit" class="btn-primary">
+                    Create account →
+                </button>
+            </form>
+        </div>
+    </section>
+}

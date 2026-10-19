@@ -21,6 +21,7 @@ app.register(cors, {
         "http://127.0.0.1:5500",
         "http://localhost:8080",
         "http://127.0.0.1:8080",
+        "http://localhost:5123",
     ],
 });
 
@@ -224,6 +225,58 @@ app.post("/accounts/me/users", async (request, reply) => {
     }
 });
 
+
+app.get("/accounts/me/users", async (request, reply) => {
+    const apiKey = request.headers["x-api-key"];
+
+    if (typeof apiKey !== "string" || apiKey.length === 0) {
+        return reply.code(401).send({
+            error: "Missing API key",
+        });
+    }
+
+    try {
+        const accountResult = await pool.query(
+            `SELECT id
+             FROM accounts
+             WHERE api_key_hash = $1`,
+            [createHash("sha256").update(apiKey).digest("hex")],
+        );
+
+        const account = accountResult.rows[0];
+
+        if (!account) {
+            return reply.code(401).send({
+                error: "Invalid API key",
+            });
+        }
+
+        const usersResult = await pool.query(
+            `SELECT
+                u.id,
+                u.account_id,
+                u.external_user_id,
+                u.plan_id,
+                p.name AS plan_name,
+                u.created_at
+             FROM users u
+             LEFT JOIN plans p ON p.id = u.plan_id
+             WHERE u.account_id = $1
+             ORDER BY u.id DESC`,
+            [account.id],
+        );
+
+        return reply.send({
+            users: usersResult.rows,
+        });
+    } catch (error) {
+        request.log.error(error);
+
+        return reply.code(500).send({
+            error: "Failed to retrieve users",
+        });
+    }
+});
 
 
 

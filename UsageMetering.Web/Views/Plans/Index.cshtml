@@ -1,0 +1,163 @@
+
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Plans";
+}
+
+<section class="section-heading">
+    <span class="eyebrow">FLEXIBLE PRICING</span>
+    <h2>Plans built around your usage.</h2>
+    <p>
+        Explore available quota plans and find the right limits
+        for your workload.
+    </p>
+</section>
+
+@if (TempData["PlanSuccess"] is string success)
+{
+    <article class="feature-card">
+        <p>@success</p>
+    </article>
+}
+
+@if (TempData["PlanError"] is string planError)
+{
+    <article class="feature-card">
+        <p>@planError</p>
+    </article>
+}
+
+@if (ViewBag.Error is string error)
+{
+    <article class="feature-card">
+        <p>@error</p>
+    </article>
+}
+
+<section class="feature-card">
+    <span class="eyebrow">CUSTOM PLAN</span>
+    <h3>Create a custom plan</h3>
+    <p>Create a plan specifically for your account.</p>
+
+    <form asp-controller="Plans"
+          asp-action="Create"
+          method="post">
+
+        @Html.AntiForgeryToken()
+        <div class="form-group">
+            <label for="name">Plan name</label>
+            <input id="name"
+                   name="name"
+                   type="text"
+                   maxlength="100"
+                   required
+                   placeholder="e.g. Business Account" />
+        </div>
+
+        <div class="form-group">
+            <label for="scope">Plan scope</label>
+            <select id="scope" name="scope" required>
+                <option value="account">Account</option>
+                <option value="user">User</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="monthlyAllowance">
+                Monthly usage allowance
+            </label>
+            <input id="monthlyAllowance"
+                   name="monthlyAllowance"
+                   type="number"
+                   min="1"
+                   step="1"
+                   required
+                   value="10000" />
+        </div>
+
+        <div class="form-group">
+            <label for="maxUnitsPerRequest">
+                Max units per request
+            </label>
+            <input id="maxUnitsPerRequest"
+                   name="maxUnitsPerRequest"
+                   type="number"
+                   min="1"
+                   step="1"
+                   required
+                   value="100" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Create Plan
+        </button>
+    </form>
+</section>
+
+<section class="section-heading">
+    <h2>Available plans</h2>
+    <p>Predefined plans and custom plans available to your account.</p>
+</section>
+
+@if (ViewBag.Plans is JsonElement response &&
+     response.ValueKind == JsonValueKind.Object &&
+     response.TryGetProperty("plans", out var plans) &&
+     plans.ValueKind == JsonValueKind.Array)
+{
+    <div class="feature-grid">
+        @foreach (var plan in plans.EnumerateArray())
+        {
+            var name = plan.TryGetProperty("name", out var n)
+                ? n.GetString() ?? "Plan"
+                : "Plan";
+
+            var scope = plan.TryGetProperty("scope", out var s)
+                ? s.GetString() ?? "account"
+                : "account";
+
+            var allowance = plan.TryGetProperty(
+                "monthlyAllowance", out var a)
+                ? a.ToString()
+                : "—";
+
+            var maxUnits = plan.TryGetProperty(
+                "maxUnitsPerRequest", out var m)
+                ? m.ToString()
+                : "—";
+
+            var predefined = plan.TryGetProperty(
+                "predefined", out var p) &&
+                p.ValueKind == JsonValueKind.True;
+
+            <article class="feature-card plan-card">
+                <span class="eyebrow">
+                    @scope.ToUpperInvariant() PLAN
+                </span>
+
+                <h3>@name</h3>
+
+                <p class="plan-allowance">@allowance</p>
+                <p>Monthly usage allowance</p>
+
+                <div class="plan-detail">
+                    <span>Max units per request</span>
+                    <strong>@maxUnits</strong>
+                </div>
+
+                <div class="plan-detail">
+                    <span>Plan type</span>
+                    <strong>
+                        @(predefined ? "Standard" : "Custom")
+                    </strong>
+                </div>
+            </article>
+        }
+    </div>
+}
+else if (ViewBag.Error is null)
+{
+    <article class="feature-card">
+        <p>No plans are available to display.</p>
+    </article>
+}

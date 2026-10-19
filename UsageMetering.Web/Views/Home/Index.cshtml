@@ -1,0 +1,106 @@
+﻿
+@{
+    ViewData["Title"] = "Overview";
+}
+
+<section class="hero-section">
+    <div>
+        <span class="eyebrow">USAGE METERING PLATFORM</span>
+        <h1>Know your usage.<br /><span>Stay in control.</span></h1>
+        <p class="hero-description">
+            Monitor API consumption, manage quotas, and understand
+            every request from one clear workspace.
+        </p>
+        <div class="hero-actions">
+            <a class="btn-primary" asp-controller="Dashboard" asp-action="Index">
+                Open dashboard <span>↗</span>
+            </a>
+            <a class="btn-secondary" asp-controller="Home" asp-action="Privacy">
+                Explore the platform
+            </a>
+        </div>
+    </div>
+
+    <div class="hero-visual" aria-label="Usage analytics illustration">
+        <div class="visual-glow"></div>
+        <div class="visual-card">
+            <div class="visual-card-header">
+                <span>Usage overview</span>
+                <span class="live-indicator">● LIVE</span>
+            </div>
+            <div class="visual-total">API <span>MONITORING</span></div>
+            <div class="visual-chart">
+                <div style="height:35%"></div>
+                <div style="height:53%"></div>
+                <div style="height:42%"></div>
+                <div style="height:72%"></div>
+                <div style="height:58%"></div>
+                <div style="height:88%"></div>
+                <div style="height:66%"></div>
+                <div style="height:96%"></div>
+                <div style="height:73%"></div>
+                <div style="height:83%"></div>
+                <div style="height:62%"></div>
+                <div style="height:100%"></div>
+            </div>
+            <div class="visual-card-footer">
+                <span>Requests</span>
+                <span>Quota tracking</span>
+                <span>Analytics</span>
+            </div>
+        </div>
+        <div class="floating-tag tag-top">↗ Usage insights</div>
+        <div class="floating-tag tag-bottom"><span class="tag-dot"></span> Quota management</div>
+    </div>
+</section>
+
+<section class="section-heading">
+    <div>
+        <span class="eyebrow">YOUR WORKSPACE</span>
+        <h2>Everything in one place.</h2>
+        <p>Tools to understand and manage your API consumption.</p>
+    </div>
+</section>
+
+<section class="feature-grid">
+    <a class="feature-card" asp-controller="Dashboard" asp-action="Index">
+        <span class="feature-icon purple">▦</span>
+        <span class="feature-arrow">↗</span>
+        <h3>Usage dashboard</h3>
+        <p>Review your account usage, quota limits, and remaining allowance.</p>
+        <span class="feature-link">View dashboard →</span>
+    </a>
+
+    <a class="feature-card" asp-controller="Users" asp-action="Index">
+        <span class="feature-icon blue">♙</span>
+        <span class="feature-arrow">↗</span>
+        <h3>Users & accounts</h3>
+        <p>Organize external users and monitor consumption across your account.</p>
+        <span class="feature-link">Manage users →</span>
+    </a>
+
+    <a class="feature-card" asp-controller="Plans" asp-action="Index">
+        <span class="feature-icon green">◇</span>
+        <span class="feature-arrow">↗</span>
+        <h3>Plans & quotas</h3>
+        <p>Understand plan allowances and configure custom usage limits.</p>
+        <span class="feature-link">Explore plans →</span>
+    </a>
+
+    <a class="feature-card" asp-controller="ApiExplorer" asp-action="Index">
+        <span class="feature-icon orange">{ }</span>
+        <span class="feature-arrow">↗</span>
+        <h3>API playground</h3>
+        <p>Test usage requests and inspect API responses in one place.</p>
+        <span class="feature-link">Try the API →</span>
+    </a>
+</section>
+
+<section class="bottom-banner">
+    <div>
+        <span class="eyebrow">BUILT FOR DEVELOPERS</span>
+        <h2>Every request tells a story.</h2>
+        <p>Track consumption, enforce quotas, and make usage more predictable.</p>
+    </div>
+    <div class="banner-symbol">U<span>.</span></div>
+</section>

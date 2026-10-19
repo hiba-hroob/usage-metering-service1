@@ -1,0 +1,238 @@
+
+@{
+    ViewData["Title"] = "API Explorer";
+    var baseUrl = ViewBag.ApiBaseUrl as string ?? "http://localhost:3000";
+}
+
+<section class="section-heading">
+    <span class="eyebrow">DEVELOPER TOOLS</span>
+    <h2>Explore the API.</h2>
+    <p>Discover endpoints, inspect request examples, and test usage metering requests.</p>
+</section>
+
+<section class="feature-card api-base-card">
+    <span class="eyebrow">BASE URL</span>
+    <div class="api-base-row">
+        <code id="apiBaseUrl">@baseUrl</code>
+        <button type="button" class="btn-primary" onclick="copyBaseUrl()">Copy URL</button>
+    </div>
+    <p>Local development address. Update it when deploying the API.</p>
+</section>
+
+<section class="feature-card endpoint-card">
+    <h3>Authentication</h3>
+    <p>Enter your API key to test protected endpoints. The key is used only for requests from this page.</p>
+    <label for="apiKey">API Key</label>
+    <input id="apiKey" type="password" autocomplete="off"
+           placeholder="Enter your API key" />
+</section>
+
+<section class="api-group">
+    <div class="section-heading">
+        <span class="eyebrow">01 — GENERAL</span>
+        <h3>Health &amp; plans</h3>
+    </div>
+
+    <article class="feature-card endpoint-card">
+        <div class="endpoint-heading">
+            <span class="http-method method-get">GET</span>
+            <code>/health</code>
+        </div>
+        <p>Check whether the API service is running.</p>
+        <button type="button" class="api-test-button"
+                onclick="testEndpoint('GET','health','healthResult')">Test endpoint</button>
+        <pre id="healthResult" class="api-result">Response will appear here.</pre>
+    </article>
+
+    <article class="feature-card endpoint-card">
+        <div class="endpoint-heading">
+            <span class="http-method method-get">GET</span>
+            <code>/health/db</code>
+        </div>
+        <p>Check the API database connection.</p>
+        <button type="button" class="api-test-button"
+                onclick="testEndpoint('GET','health/db','dbResult')">Test endpoint</button>
+        <pre id="dbResult" class="api-result">Response will appear here.</pre>
+    </article>
+
+    <article class="feature-card endpoint-card">
+        <div class="endpoint-heading">
+            <span class="http-method method-get">GET</span>
+            <code>/plans</code>
+        </div>
+        <p>Retrieve available plans. Include your API key to see account-specific custom plans.</p>
+        <button type="button" class="api-test-button"
+                onclick="testEndpoint('GET','plans','plansResult',null,true)">Test endpoint</button>
+        <pre id="plansResult" class="api-result">Response will appear here.</pre>
+    </article>
+</section>
+
+<section class="api-group">
+    <div class="section-heading">
+        <span class="eyebrow">02 — ACCOUNT</span>
+        <h3>Account &amp; usage</h3>
+    </div>
+
+    <article class="feature-card endpoint-card">
+        <div class="endpoint-heading">
+            <span class="http-method method-post">POST</span>
+            <code>/accounts</code>
+        </div>
+        <p>Create an account. Save the returned API key securely.</p>
+        <label for="accountName">Application name</label>
+        <input id="accountName" value="My Application" />
+        <button type="button" class="api-test-button"
+                onclick="createAccount()">Create account</button>
+        <pre id="accountResult" class="api-result">Response will appear here.</pre>
+    </article>
+
+    <article class="feature-card endpoint-card">
+        <div class="endpoint-heading">
+            <span class="http-method method-get">GET</span>
+            <code>/usage</code>
+        </div>
+        <p>Retrieve usage information for the authenticated account.</p>
+        <button type="button" class="api-test-button"
+                onclick="testEndpoint('GET','usage','usageResult',null,true)">Test endpoint</button>
+        <pre id="usageResult" class="api-result">Response will appear here.</pre>
+    </article>
+
+    <article class="feature-card endpoint-card">
+        <div class="endpoint-heading">
+            <span class="http-method method-get">GET</span>
+            <code>/usage/history?page=1&amp;limit=20</code>
+        </div>
+        <p>Retrieve paginated usage history.</p>
+        <button type="button" class="api-test-button"
+                onclick="testEndpoint('GET','usage/history?page=1&amp;limit=20','historyResult',null,true)">Test endpoint</button>
+        <pre id="historyResult" class="api-result">Response will appear here.</pre>
+    </article>
+
+    <article class="feature-card endpoint-card">
+        <div class="endpoint-heading">
+            <span class="http-method method-post">POST</span>
+            <code>/accounts/me/users</code>
+        </div>
+        <p>Create a user under your account. The plan must be an available user-scope plan.</p>
+        <label for="externalUserId">External user ID</label>
+        <input id="externalUserId" placeholder="user-001" />
+        <label for="planName">Plan name</label>
+        <input id="planName" value="Basic User" />
+        <button type="button" class="api-test-button"
+                onclick="createUser()">Create user</button>
+        <pre id="userResult" class="api-result">Response will appear here.</pre>
+    </article>
+
+    <article class="feature-card endpoint-card">
+        <div class="endpoint-heading">
+            <span class="http-method method-post">POST</span>
+            <code>/consumptions</code>
+        </div>
+        <p>Submit a consumption request. Request fields depend on the API schema.</p>
+        <label for="consumptionBody">Request JSON</label>
+        <textarea id="consumptionBody" rows="6" spellcheck="false">{
+  "externalUserId": "user-001"
+}</textarea>
+        <p>Adjust this JSON to match the actual consumption schema in your API.</p>
+        <button type="button" class="api-test-button"
+                onclick="testCustomConsumption()">Send consumption</button>
+        <pre id="consumptionResult" class="api-result">Response will appear here.</pre>
+    </article>
+</section>
+
+<script>
+    function getBaseUrl() {
+        return document.getElementById('apiBaseUrl').textContent.trim().replace(/\/+$/, '');
+    }
+
+    async function copyBaseUrl() {
+        const value = getBaseUrl();
+        try {
+            await navigator.clipboard.writeText(value);
+            alert('Base URL copied.');
+        } catch {
+            alert('Could not copy automatically. Please copy the URL manually.');
+        }
+    }
+
+    function showResult(id, text) {
+        document.getElementById(id).textContent = text;
+    }
+
+    async function sendRequest(method, path, resultId, body = null, needsKey = false) {
+        const output = document.getElementById(resultId);
+        const apiKey = document.getElementById('apiKey').value.trim();
+
+        if (needsKey && !apiKey) {
+            showResult(resultId, 'Enter your API key first.');
+            return;
+        }
+
+        output.textContent = 'Sending request...';
+
+        const headers = {};
+        if (needsKey && apiKey) headers['x-api-key'] = apiKey;
+        if (body !== null) headers['Content-Type'] = 'application/json';
+
+        try {
+            const response = await fetch(`${getBaseUrl()}/${path.replace(/^\/+/, '')}`, {
+                method,
+                headers,
+                body: body === null ? undefined : JSON.stringify(body)
+            });
+
+            const text = await response.text();
+            let formatted = text;
+
+            try {
+                formatted = JSON.stringify(JSON.parse(text), null, 2);
+            } catch {}
+
+            showResult(resultId, `HTTP ${response.status} ${response.statusText}\n\n${formatted}`);
+        } catch (error) {
+            showResult(resultId,
+                'Request failed. Check that the API is running and CORS allows this request.\n' +
+                (error?.message || 'Network error'));
+        }
+    }
+
+    function testEndpoint(method, path, resultId, body = null, needsKey = false) {
+        return sendRequest(method, path, resultId, body, needsKey);
+    }
+
+    function createAccount() {
+        const name = document.getElementById('accountName').value.trim();
+        if (!name) {
+            showResult('accountResult', 'Enter an application name.');
+            return;
+        }
+        sendRequest('POST', 'accounts', 'accountResult', { name });
+    }
+
+    function createUser() {
+        const externalUserId = document.getElementById('externalUserId').value.trim();
+        const planName = document.getElementById('planName').value.trim();
+
+        if (!externalUserId || !planName) {
+            showResult('userResult', 'Enter both an external user ID and a plan name.');
+            return;
+        }
+
+        sendRequest('POST', 'accounts/me/users', 'userResult',
+            { externalUserId, planName }, true);
+    }
+
+    function testCustomConsumption() {
+        const field = document.getElementById('consumptionBody');
+        let body;
+
+        try {
+            body = JSON.parse(field.value);
+        } catch {
+            showResult('consumptionResult', 'Invalid JSON. Please correct the request body.');
+            return;
+        }
+
+        sendRequest('POST', 'consumptions', 'consumptionResult', body, true);
+    }
+</script>

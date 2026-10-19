@@ -1,0 +1,145 @@
+
+@model UsageMetering.Web.Models.ConsumptionViewModel
+
+@{
+    ViewData["Title"] = "Consume Usage";
+}
+
+<div class="container py-4">
+    <h1>Consume Usage</h1>
+    <p class="text-muted">
+        Submit a usage request and check your account quotas.
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Error))
+    {
+        <div class="alert alert-warning" role="alert">
+            @Model.Error
+        </div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form asp-controller="Consumption"
+                  asp-action="Consume"
+                  method="post">
+
+                @Html.AntiForgeryToken()
+
+                <div class="mb-3">
+                    <label asp-for="UserId" class="form-label">
+                        User
+                    </label>
+
+                    <select asp-for="UserId" class="form-select" required>
+                        <option value="">Select a user</option>
+                        @foreach (var user in Model.Users)
+                        {
+                            <option value="@user.Id">
+                                @user.ExternalUserId — @user.PlanName
+                            </option>
+                        }
+                    </select>
+
+                    @if (Model.Users.Count == 0)
+                    {
+                        <small class="text-muted">
+                            No users found. Create a user from the Users page first.
+                        </small>
+                    }
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Units" class="form-label">
+                        Units
+                    </label>
+                    <input asp-for="Units"
+                           type="number"
+                           min="1"
+                           class="form-control"
+                           required />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="RequestId" class="form-label">
+                        Request ID
+                    </label>
+                    <input asp-for="RequestId"
+                           class="form-control"
+                           maxlength="150"
+                           required />
+                    <small class="text-muted">
+                        Each new request should have a unique ID.
+                    </small>
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary"
+                        disabled="@(Model.Users.Count == 0)">
+                    Consume
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.Result is not null)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h4">Request Result</h2>
+
+                @if (Model.Result.Accepted)
+                {
+                    <div class="alert alert-success">
+                        Usage accepted successfully.
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-danger">
+                        Usage rejected.
+                        <strong>Reason:</strong>
+                        @(Model.Result.Reason ?? "Unknown")
+                    </div>
+                }
+
+                @if (Model.Result.Replayed)
+                {
+                    <div class="alert alert-info">
+                        This request was already processed.
+                        Usage was not counted again.
+                    </div>
+                }
+
+                <dl class="row">
+                    <dt class="col-sm-4">Request ID</dt>
+                    <dd class="col-sm-8">@Model.Result.RequestId</dd>
+
+                    <dt class="col-sm-4">Units requested</dt>
+                    <dd class="col-sm-8">@Model.Result.Units</dd>
+
+                    <dt class="col-sm-4">Month</dt>
+                    <dd class="col-sm-8">@Model.Result.MonthStart</dd>
+
+                    @if (Model.Result.AccountUsage is not null)
+                    {
+                        <dt class="col-sm-4">Account usage</dt>
+                        <dd class="col-sm-8">
+                            @Model.Result.AccountUsage.Consumed /
+                            @Model.Result.AccountUsage.Allowance
+                        </dd>
+                    }
+
+                    @if (Model.Result.UserUsage is not null)
+                    {
+                        <dt class="col-sm-4">User usage</dt>
+                        <dd class="col-sm-8">
+                            @Model.Result.UserUsage.Consumed /
+                            @Model.Result.UserUsage.Allowance
+                        </dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    }
+</div>
