@@ -65,7 +65,18 @@ trap shutdown EXIT INT TERM
 dotnet /app/UsageMetering.Web.dll &
 WEB_PID=$!
 
-wait -n "$API_PID" "$WEB_PID"
+while kill -0 "$API_PID" 2>/dev/null &&
+      kill -0 "$WEB_PID" 2>/dev/null
+do
+    sleep 2
+done
+
+if ! kill -0 "$API_PID" 2>/dev/null; then
+    wait "$API_PID" || true
+    exit 1
+fi
+
+wait "$WEB_PID"
 EOF
 
 RUN chmod +x /app/start.sh
