@@ -2,7 +2,7 @@
 
 A TypeScript, Fastify, and PostgreSQL API for tracking consumption and enforcing monthly account-level and user-level quotas.
 
-**Live Web Application:** [Open UsageMeter](https://usage-metering-service1.onrender.com/)
+🌐**Live Web Application:**  [Open UsageMeter](https://usage-metering-service1.onrender.com/)
 
 The web application is deployed and accessible online.
 
