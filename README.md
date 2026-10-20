@@ -2,6 +2,10 @@
 
 A TypeScript, Fastify, and PostgreSQL API for tracking consumption and enforcing monthly account-level and user-level quotas.
 
+**Live Web Application:** [Open UsageMeter](https://usage-metering-service1.onrender.com/)
+
+The web application is deployed and accessible online.
+
 ## Features
 
 - API-key authentication with SHA-256 hashed API keys stored in PostgreSQL.
@@ -328,6 +332,16 @@ Review the generated report before committing it. Performance artifacts must not
 ## Web Application and User Interface
 
 The project also includes an ASP.NET Core MVC web application that provides a browser-based interface for interacting with the Usage Metering API.
+
+## Live Deployment
+
+The UsageMeter web application is deployed on Render and available online:
+
+**Live URL:** https://usage-metering-service1.onrender.com/
+
+Visit the live application to explore the dashboard, workspace management, user management, usage consumption, plans, and API Explorer through the browser-based interface.
+
+The web application communicates with the Usage Metering REST API to provide account-level and user-level usage monitoring and quota management.
 
 ### Web Application Features
 
