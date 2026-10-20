@@ -2265,3 +2265,19 @@ article.feature-card:not(.plan-card):not(:has(form)) {
         display: flex;
     }
 }
+
+@media (max-width: 900px) {
+    .header-nav {
+        display: none;
+    }
+
+    .header-nav.is-open {
+        display: flex !important;
+        flex-direction: column;
+        width: 100%;
+        position: relative;
+        z-index: 9999;
+        visibility: visible;
+        opacity: 1;
+    }
+}
