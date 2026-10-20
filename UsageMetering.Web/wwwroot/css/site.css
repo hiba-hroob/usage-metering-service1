@@ -2287,26 +2287,25 @@ article.feature-card:not(.plan-card):not(:has(form)) {
 
 @media (max-width: 900px) {
     .site-header {
-        position: relative;
-        align-items: center;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 100000 !important;
+        background: #090b14 !important;
     }
 
     .menu-toggle {
-        position: relative;
-        flex-shrink: 0;
-        z-index: 100002;
-        align-self: center;
+        position: relative !important;
+        top: 0 !important;
+        transform: none !important;
+        z-index: 100002 !important;
     }
 
-    .header-nav {
-        position: relative !important;
-        flex: 0 0 100%;
-        width: 100%;
-        margin-top: 8px;
-        z-index: 100001;
+    .menu-toggle.is-active {
+        transform: none !important;
     }
 
     .header-nav.is-open {
-        display: flex !important;
+        position: static !important;
+        transform: none !important;
     }
 }
