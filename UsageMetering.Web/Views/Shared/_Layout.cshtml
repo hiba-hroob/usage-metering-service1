@@ -13,25 +13,37 @@
 </head>
 <body>
     <div class="site-shell">
-        <header class="site-header">
-            <a class="brand" asp-controller="Home" asp-action="Index">
-                <span class="brand-mark">U<span>.</span></span>
-                <span class="brand-name">usage<span>meter</span></span>
-            </a>
 
-            <nav class="header-nav" aria-label="Main navigation">
-                <a asp-controller="Home" asp-action="Index">Home</a>
-                <a asp-controller="Dashboard" asp-action="Index">Dashboard</a>
-                <a asp-controller="Users" asp-action="Index">Users</a>
-                <a asp-controller="Consumption" asp-action="Index">Consume Usage</a>
-                <a asp-controller="Plans" asp-action="Index">Plans</a>
-                <a asp-controller="ApiExplorer" asp-action="Index">API Explorer</a>
-            </nav>
+<header class="site-header">
+    <a class="brand" asp-controller="Home" asp-action="Index">
+        <span class="brand-mark">U<span>.</span></span>
+        <span class="brand-name">usage<span>meter</span></span>
+    </a>
 
-            <a class="header-cta" asp-controller="Dashboard" asp-action="Index">
-                Open workspace <span>↗</span>
-            </a>
-        </header>
+    <button class="menu-toggle"
+            type="button"
+            aria-label="Toggle navigation"
+            aria-expanded="false"
+            aria-controls="main-navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <nav class="header-nav" id="main-navigation" aria-label="Main navigation">
+        <a asp-controller="Home" asp-action="Index">Home</a>
+        <a asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+        <a asp-controller="Users" asp-action="Index">Users</a>
+        <a asp-controller="Consumption" asp-action="Index">Consume Usage</a>
+        <a asp-controller="Plans" asp-action="Index">Plans</a>
+        <a asp-controller="ApiExplorer" asp-action="Index">API Explorer</a>
+    </nav>
+
+    <a class="header-cta" asp-controller="Dashboard" asp-action="Index">
+        Open workspace <span>↗</span>
+    </a>
+</header>
+
 
         <main role="main">
             @RenderBody()
