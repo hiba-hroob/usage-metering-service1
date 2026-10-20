@@ -2331,3 +2331,262 @@ article.feature-card:not(.plan-card):not(:has(form)) {
         opacity: 1 !important;
     }
 }
+
+/* =========================================
+   USAGEMETER DASHBOARD — RESPONSIVE DESIGN
+   Append at the END of site.css
+   ========================================= */
+
+/* Prevent horizontal overflow */
+.site-shell,
+.site-shell main,
+.site-shell main section,
+.site-shell main article {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.site-shell main img,
+.site-shell main svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.site-shell main code {
+    display: block;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+/* Section heading */
+.site-shell main .section-heading {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: clamp(22px, 4vw, 36px);
+    overflow-wrap: anywhere;
+}
+
+.site-shell main .section-heading h2 {
+    font-size: clamp(1.6rem, 3.5vw, 2.5rem);
+    line-height: 1.2;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.site-shell main .section-heading p {
+    max-width: 650px;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+}
+
+/* Responsive feature cards */
+.site-shell main .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(14px, 2vw, 22px);
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 24px;
+}
+
+.site-shell main .feature-card {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: clamp(18px, 2.5vw, 28px);
+    border-radius: 18px;
+    overflow-wrap: anywhere;
+}
+
+.site-shell main .feature-card h3 {
+    max-width: 100%;
+    font-size: clamp(1.15rem, 2vw, 1.65rem);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.site-shell main .feature-card p {
+    max-width: 100%;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+/* Banners and forms */
+.site-shell main .bottom-banner {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: clamp(20px, 4vw, 40px);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.site-shell main .bottom-banner > div {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.site-shell main .bottom-banner h2 {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.site-shell main .bottom-banner p {
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+}
+
+.site-shell main form {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.site-shell main form label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.site-shell main form input,
+.site-shell main form select,
+.site-shell main form textarea {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.site-shell main form input {
+    margin-bottom: 16px;
+}
+
+.site-shell main button,
+.site-shell main .btn-primary,
+.site-shell main .btn-secondary {
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+/* API key and long values */
+.site-shell main #newApiKey {
+    margin: 14px 0;
+    padding: 14px;
+    border-radius: 12px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+    .site-shell main .feature-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .site-shell main .feature-card {
+        padding: 20px;
+    }
+
+    .site-shell main .bottom-banner {
+        padding: 28px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .site-shell main .section-heading {
+        margin-bottom: 24px;
+    }
+
+    .site-shell main .section-heading h2 {
+        font-size: clamp(1.5rem, 7vw, 2rem);
+        line-height: 1.3;
+    }
+
+    .site-shell main .section-heading p {
+        font-size: 0.94rem;
+    }
+
+    .site-shell main .feature-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    .site-shell main .feature-card {
+        padding: 22px;
+        border-radius: 16px;
+    }
+
+    .site-shell main .feature-card h3 {
+        font-size: 1.35rem;
+    }
+
+    .site-shell main .bottom-banner {
+        padding: 22px 18px;
+        border-radius: 16px;
+    }
+
+    .site-shell main .bottom-banner form {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .site-shell main .bottom-banner form label {
+        margin-bottom: 0;
+    }
+
+    .site-shell main .bottom-banner form input {
+        margin-bottom: 6px;
+    }
+
+    .site-shell main .bottom-banner form button,
+    .site-shell main form .btn-primary,
+    .site-shell main form .btn-secondary {
+        width: 100%;
+        min-height: 46px;
+    }
+
+    .site-shell main #newApiKey {
+        padding: 12px;
+        font-size: 0.82rem;
+    }
+}
+
+/* Small mobile */
+@media (max-width: 380px) {
+    .site-shell main .feature-card {
+        padding: 17px;
+    }
+
+    .site-shell main .bottom-banner {
+        padding: 18px 14px;
+    }
+
+    .site-shell main .section-heading h2 {
+        font-size: 1.45rem;
+    }
+
+    .site-shell main .feature-card h3 {
+        font-size: 1.2rem;
+    }
+
+    .site-shell main button,
+    .site-shell main .btn-primary,
+    .site-shell main .btn-secondary {
+        font-size: 0.9rem;
+    }
+}
