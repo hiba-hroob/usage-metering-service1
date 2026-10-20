@@ -86,7 +86,8 @@
                 nav.style.setProperty('opacity', '1', 'important');
             }
 
-            button.setAttribute('aria-expanded', String(!isOpen));
+            button.classList.toggle('is-active', !isOpen);
+button.setAttribute('aria-expanded', String(!isOpen));
         };
     });
 </script>
