@@ -56,5 +56,25 @@
     </div>
 
     @await RenderSectionAsync("Scripts", required: false)
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const menuToggle = document.querySelector('.menu-toggle');
+        const headerNav = document.querySelector('.header-nav');
+
+        if (!menuToggle || !headerNav) {
+            console.error('Navigation elements not found!');
+            return;
+        }
+
+        menuToggle.addEventListener('click', function () {
+            const isOpen = headerNav.classList.toggle('is-open');
+
+            menuToggle.setAttribute('aria-expanded', isOpen);
+            console.log('Menu is open:', isOpen);
+        });
+    });
+</script>
+
 </body>
 </html>
