@@ -2284,3 +2284,50 @@ article.feature-card:not(.plan-card):not(:has(form)) {
         display: flex;
     }
 }
+
+@media (max-width: 900px) {
+    .site-header {
+        position: relative !important;
+        transform: none !important;
+    }
+
+    .menu-toggle {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        flex-shrink: 0;
+        z-index: 100002;
+    }
+
+    .menu-toggle.is-active {
+        transform: none !important;
+    }
+
+    .header-nav,
+    .header-nav.is-open {
+        position: absolute !important;
+        top: calc(100% + 8px) !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box;
+        margin: 0 !important;
+        z-index: 100001 !important;
+        transform: none !important;
+        max-height: calc(100vh - 110px);
+        overflow-y: auto;
+    }
+
+    .header-nav:not(.is-open) {
+        display: none !important;
+    }
+
+    .header-nav.is-open {
+        display: flex !important;
+        flex-direction: column !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+}
