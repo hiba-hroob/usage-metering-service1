@@ -2284,28 +2284,3 @@ article.feature-card:not(.plan-card):not(:has(form)) {
         display: flex;
     }
 }
-
-@media (max-width: 900px) {
-    .site-header {
-        position: sticky !important;
-        top: 0 !important;
-        z-index: 100000 !important;
-        background: #090b14 !important;
-    }
-
-    .menu-toggle {
-        position: relative !important;
-        top: 0 !important;
-        transform: none !important;
-        z-index: 100002 !important;
-    }
-
-    .menu-toggle.is-active {
-        transform: none !important;
-    }
-
-    .header-nav.is-open {
-        position: static !important;
-        transform: none !important;
-    }
-}
