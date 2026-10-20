@@ -1,8 +1,34 @@
-# Usage Metering and Quota Service
+# UsageMetering — Usage Tracking & Quota Management
 
-A TypeScript, Fastify, and PostgreSQL API for tracking consumption and enforcing monthly account-level and user-level quotas.
+A full-stack usage metering and quota management system built with **ASP.NET Core MVC, TypeScript, Fastify, and PostgreSQL**.
+
+UsageMetering provides an API for tracking consumption and enforcing monthly account-level and user-level quotas, together with a web dashboard for managing workspaces, users, plans, and usage.
+
+## Project Overview
+
+UsageMetering helps applications control resource consumption through configurable plans and monthly quotas.
+
+The project consists of two main application layers:
+
+- **Web Dashboard:** An ASP.NET Core MVC application for interacting with the service through a browser.
+- **REST API:** A TypeScript and Fastify application responsible for account authentication, plan management, quota enforcement, and usage tracking.
+
+PostgreSQL stores account information, users, plans, monthly usage counters, and consumption history.
 
 ## Features
+
+### Web Dashboard
+
+- Workspace creation to establish an account for monitoring usage.
+- User management and account-scoped usage administration.
+- Consumption requests through the web interface.
+- Plan management and custom plan creation.
+- API Explorer for testing API endpoints.
+- Usage and quota monitoring through the dashboard.
+- Privacy Policy page documenting the service's data handling and security practices.
+- Dark, neon-inspired interface designed for a consistent user experience.
+
+### API & Usage Management
 
 - API-key authentication with SHA-256 hashed API keys stored in PostgreSQL.
 - Account-scoped users and usage data.
@@ -14,22 +40,75 @@ A TypeScript, Fastify, and PostgreSQL API for tracking consumption and enforcing
 - Paginated consumption history, including accepted and rejected requests.
 - Request idempotency using `requestId`.
 - Transactional consumption processing with account locking for concurrent requests.
-- Protected administrative endpoints for changing accounts' and users' plans.
+- Protected administrative endpoints for changing account and user plans.
 - PostgreSQL migrations and seeded predefined plans.
 - Docker Compose deployment and a runnable demonstration client.
 - Integration tests using Vitest and a k6 performance test.
+
+## Architecture
+
+```text
+                  User's Browser
+                        |
+                        v
+             ASP.NET Core MVC Web App
+                  UsageMetering.Web
+                        |
+                        | HTTP requests
+                        v
+                Fastify REST API
+                 localhost:3000
+                        |
+                        v
+                    PostgreSQL
+```
+
+**Responsibilities**
+
+| Component | Responsibility |
+|---|---|
+| ASP.NET Core MVC | Web interface, dashboard pages, and HTTP requests to the API |
+| TypeScript + Fastify | API endpoints, authentication, quota validation, and consumption processing |
+| PostgreSQL | Persistent storage for accounts, users, plans, usage, and migrations |
+| Docker Compose | Local infrastructure and API deployment |
+| Vitest | Integration testing |
+| Grafana k6 | Local API load testing |
+
+The MVC application communicates with the API over HTTP. The API performs the actual usage and quota operations and persists data in PostgreSQL.
+
+## Technology Stack
+
+**Frontend / Web Application**
+- ASP.NET Core MVC
+- Razor Views
+- HTML and CSS
+- JavaScript
+
+**Backend API**
+- TypeScript
+- Node.js
+- Fastify
+- PostgreSQL
+
+**Development & Testing**
+- Docker Compose
+- npm
+- Vitest
+- Grafana k6
 
 ## Requirements
 
 - Node.js 24 or a compatible supported LTS release.
 - npm.
+- .NET SDK compatible with the MVC project's target framework.
 - Docker Desktop with Docker Compose.
+- PowerShell on Windows, or a compatible terminal.
 
-## Configuration
+## Configuration & Security
 
 The Docker Compose setup reads `ADMIN_API_KEY` from `.env`.
 
-Create a random administration key in PowerShell:
+Create a random administration key in PowerShell from the project root:
 
 ```powershell
 $bytes = New-Object byte[] 32
@@ -43,17 +122,33 @@ Remove-Variable adminKey, bytes, rng
 
 Do not commit `.env` or expose the administration key. The repository's `.gitignore` excludes `.env`.
 
-The Docker Compose configuration uses demonstration database credentials and is intended for local development. Use secrets management, suitable access controls, and appropriate database credentials in production.
+The Docker Compose configuration uses demonstration database credentials and is intended for local development. Use secrets management, appropriate database credentials, and suitable access controls in production.
 
-## Run with Docker Compose
+### API Configuration
 
-Start the database and API:
+The API listens on port `3000` by default in the documented local setup.
+
+The MVC application must use the correct API base URL to communicate with the backend. For local development, the expected API address is:
+
+```text
+http://localhost:3000
+```
+
+Ensure that the MVC application's `UsageMeteringApi` HTTP client configuration points to the running API. Check the relevant configuration files in the web project if you use a different address or port.
+
+Do not expose API keys or administrative credentials in public repositories, screenshots, or committed configuration files.
+
+## Getting Started
+
+### 1. Start PostgreSQL and the API
+
+From the repository root, configure `.env` as described above, then run:
 
 ```powershell
 docker compose up -d --build db app
 ```
 
-Check service status:
+Check the service status:
 
 ```powershell
 docker compose ps
@@ -66,9 +161,69 @@ Invoke-RestMethod http://localhost:3000/health
 Invoke-RestMethod http://localhost:3000/health/db
 ```
 
-The API listens on port `3000`. PostgreSQL is published on host port `5433` and listens on port `5432` inside the Compose network. The Compose configuration runs the migration service as part of starting the application.
+The API listens on host port `3000`. PostgreSQL is published on host port `5433` and listens on port `5432` inside the Compose network. The Compose configuration runs the migration service as part of starting the application.
 
-### Run the demonstration client
+Both the API and the database must be available before creating workspaces through the web dashboard.
+
+### 2. Start the Web Dashboard
+
+Open a terminal and navigate to the MVC project directory:
+
+```powershell
+cd .\UsageMetering.Web
+```
+
+Restore dependencies and run the application:
+
+```powershell
+dotnet restore
+dotnet run
+```
+
+Alternatively, open the solution in Visual Studio, select the MVC project as the startup project, and press `F5`.
+
+Open the local URL printed by ASP.NET Core in the terminal or browser. The exact web port depends on the project's launch settings.
+
+**Important:** Keep the API and database running while using the dashboard. Starting the MVC application does not automatically guarantee that the API or PostgreSQL is running.
+
+### 3. Create a Workspace
+
+1. Open the web dashboard in your browser.
+2. Navigate to the workspace creation page.
+3. Enter a workspace name.
+4. Select **Create account**.
+5. Use the resulting account to access account-scoped features supported by the application.
+
+If workspace creation fails, verify the following:
+
+- The API is running and listening on port `3000`.
+- The API's database health endpoint responds successfully.
+- The MVC application's configured API base URL is correct.
+- The API and database logs do not contain connection or configuration errors.
+
+Test API connectivity from PowerShell:
+
+```powershell
+Test-NetConnection localhost -Port 3000
+```
+
+A successful TCP connection reports:
+
+```text
+TcpTestSucceeded : True
+```
+
+This confirms that a service accepts connections on the port; it does not by itself confirm that the database is healthy or that account creation will succeed.
+
+## Run with Docker Compose
+
+Start the database and API:
+
+```powershell
+docker compose up -d --build db app
+```
+
+Run the demonstration client:
 
 ```powershell
 docker compose run --build --rm demo
@@ -76,9 +231,9 @@ docker compose run --build --rm demo
 
 The demo creates an account with a custom shared monthly allowance of 15 units. It creates two users with different custom plans, consumes 8 units for the first user and 7 units for the second, and verifies that an additional unit is rejected with `ACCOUNT_MONTHLY_LIMIT`.
 
-The demo then upgrades the account to `Pro Account` and the first user to `Premium User`, verifies that consumption can continue under the new plans without resetting existing usage, and prints a monthly usage summary.
+The demo then upgrades the account to Pro Account and the first user to Premium User, verifies that consumption can continue under the new plans without resetting existing usage, and prints a monthly usage summary.
 
-Expected consumption results:
+### Expected Consumption Results
 
 | Stage | Account consumed | User 1 consumed | User 2 consumed |
 |---|---:|---:|---:|
@@ -97,7 +252,7 @@ docker compose down
 
 The named database volume is preserved by `docker compose down`. Do not use `docker compose down -v` unless you intentionally want to delete the Compose database volume.
 
-## Run checks locally
+## Run Checks Locally
 
 Install dependencies:
 
@@ -125,7 +280,9 @@ npm.cmd test
 
 The integration tests use a database named `usage_metering_test`. Configure `DB_NAME` and the other `DB_*` environment variables appropriately before running them. The test suite verifies the connected database name and refuses to proceed if it is not `usage_metering_test`.
 
-### Run database migrations
+On Windows, `npm.cmd` can be used when PowerShell's execution policy prevents `npm.ps1` from running.
+
+## Run Database Migrations
 
 ```powershell
 npm.cmd run migrate
@@ -133,9 +290,9 @@ npm.cmd run migrate
 
 The migration command applies pending SQL migration files in sorted filename order and records applied migrations in `schema_migrations`.
 
-**Verify the database connection before running migrations.** Ensure that the command targets the intended database. The migration files use PostgreSQL syntax.
+Verify the database connection before running migrations. Ensure that the command targets the intended database. The migration files use PostgreSQL syntax.
 
-## Predefined plans
+## Predefined Plans
 
 | Plan | Scope | Monthly allowance | Maximum units per request |
 |---|---|---:|---:|
@@ -148,32 +305,34 @@ Account and user limits apply simultaneously. A request is accepted only if it p
 
 Predefined plans are managed by the application and are read-only through the custom-plan endpoints. Account owners can create and update their own custom plans.
 
-## API endpoints
+## API Endpoints
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `POST` | `/accounts` | Create an account and receive its API key |
-| `POST` | `/accounts/me/users` | Create a user under the authenticated account |
-| `POST` | `/consumptions` | Submit a consumption request |
-| `GET` | `/usage` | Retrieve the current month's account and user usage |
-| `GET` | `/usage?month=YYYY-MM` | Retrieve usage counters for a specified UTC calendar month |
-| `GET` | `/usage/history?page=1&limit=20` | Retrieve paginated account consumption history |
-| `GET` | `/plans` | List predefined plans |
-| `GET` | `/plans` with `x-api-key` | List predefined plans and the authenticated account's custom plans |
-| `POST` | `/plans` | Create a custom plan owned by the authenticated account |
-| `PATCH` | `/plans/:planId` | Update an owned custom plan |
-| `PATCH` | `/accounts/me/plan` | Assign an allowed account plan by `planId` |
-| `PATCH` | `/accounts/me/users/:userId/plan` | Assign an allowed user plan by `planId` |
-| `PATCH` | `/admin/accounts/:accountId/plan` | Change an account to a predefined plan |
-| `PATCH` | `/admin/users/:userId/plan` | Change a user to a predefined plan |
-| `GET` | `/health` | Check API health |
-| `GET` | `/health/db` | Check database connectivity |
+| POST | `/accounts` | Create an account and receive its API key |
+| POST | `/accounts/me/users` | Create a user under the authenticated account |
+| POST | `/consumptions` | Submit a consumption request |
+| GET | `/usage` | Retrieve current-month account and user usage |
+| GET | `/usage?month=YYYY-MM` | Retrieve usage for a specified UTC calendar month |
+| GET | `/usage/history?page=1&limit=20` | Retrieve paginated account consumption history |
+| GET | `/plans` | List predefined plans |
+| GET | `/plans` with `x-api-key` | List predefined plans and the authenticated account's custom plans |
+| POST | `/plans` | Create an account-owned custom plan |
+| PATCH | `/plans/:planId` | Update an owned custom plan |
+| PATCH | `/accounts/me/plan` | Assign an allowed account plan by `planId` |
+| PATCH | `/accounts/me/users/:userId/plan` | Assign an allowed user plan by `planId` |
+| PATCH | `/admin/accounts/:accountId/plan` | Change an account to a predefined plan |
+| PATCH | `/admin/users/:userId/plan` | Change a user to a predefined plan |
+| GET | `/health` | Check API health |
+| GET | `/health/db` | Check database connectivity |
 
-Account-scoped endpoints use the `x-api-key` header. Administrative plan-change endpoints use the `x-admin-api-key` header. Administrative operations require the configured `ADMIN_API_KEY`.
+Account-scoped endpoints use the `x-api-key` header. Administrative plan-change endpoints use the `x-admin-api-key` header and require the configured `ADMIN_API_KEY`.
 
-### API key and account creation
+The web application's API Explorer can be used to test supported endpoints from the browser.
 
-Example account creation:
+## API Key and Account Creation
+
+Example account creation in PowerShell:
 
 ```powershell
 $account = Invoke-RestMethod `
@@ -188,7 +347,7 @@ $account = Invoke-RestMethod `
 
 Keep the returned `apiKey` private. The database stores a SHA-256 hash of the account API key rather than its raw value.
 
-### Create a custom plan
+## Create a Custom Plan
 
 Custom plans belong to the account authenticated by `x-api-key`. The scope must be `account` or `user`, and both quota values must be positive whole numbers.
 
@@ -225,7 +384,7 @@ Replace `USER_ID` with the actual user ID returned when creating the user.
 
 An account can assign its own custom plans and applicable predefined plans. It cannot assign another account's custom plans. Custom-plan updates are restricted to their owning account; attempts to update predefined plans through `PATCH /plans/:planId` are not allowed.
 
-### Submit a consumption request
+## Submit a Consumption Request
 
 ```powershell
 Invoke-RestMethod `
@@ -240,9 +399,9 @@ Invoke-RestMethod `
   } | ConvertTo-Json)
 ```
 
-Replace `USER_ID` with a user ID belonging to the authenticated account. In this example, `USER_ID` is a placeholder string and must be replaced before executing the request.
+Replace `USER_ID` with a user ID belonging to the authenticated account.
 
-### Query usage for a previous month
+## Query Usage
 
 Retrieve the current month's summary:
 
@@ -260,11 +419,11 @@ Invoke-RestMethod `
   -Headers @{ 'x-api-key' = $account.apiKey }
 ```
 
-An invalid month value, such as `2026-13`, returns HTTP `400`. If `month` is omitted, the endpoint defaults to the current UTC calendar month.
+An invalid month value, such as `2026-13`, returns HTTP 400. If `month` is omitted, the endpoint defaults to the current UTC calendar month.
 
-Historical queries retrieve the stored usage counters for the requested month. **Plan names and quota values are based on the plans currently assigned to the account and users; the service does not snapshot historical plan definitions at the time of consumption.**
+Historical queries retrieve stored usage counters for the requested month. Plan names and quota values are based on the plans currently assigned to the account and users; the service does not snapshot historical plan definitions at the time of consumption.
 
-## Quota and request behavior
+## Quota and Request Behavior
 
 - The quota period is the UTC calendar month.
 - Both account-level and user-level request limits and monthly allowances apply to each consumption request.
@@ -272,28 +431,30 @@ Historical queries retrieve the stored usage counters for the requested month. *
 - Accepted and rejected attempts are recorded in `usage_records`.
 - `requestId` provides idempotency within an account.
 - Repeating the same `requestId` with the same user and units does not consume units twice.
-- Reusing a `requestId` with different request data returns HTTP `409`.
+- Reusing a `requestId` with different request data returns HTTP 409.
 - A user must belong to the account associated with the API key.
 - Changing a plan affects future consumption decisions; it does not reset previous usage or delete consumption history.
 - If usage already exceeds a newly assigned allowance, the reported remaining allowance is zero and subsequent requests are checked against the new limits.
 - An account's monthly allowance is shared across its users.
 
-## Data model
+## Data Model
 
-- `accounts`: account identity, API key hash, and account plan.
-- `users`: account-owned external user identities and user plans.
-- `plans`: predefined plan definitions and account-owned custom plan definitions.
-- `monthly_usage`: monthly consumption counters for accounts and individual users.
-- `usage_records`: accepted and rejected consumption attempts.
-- `schema_migrations`: migration history.
+| Table | Description |
+|---|---|
+| `accounts` | Account identity, API key hash, and account plan |
+| `users` | Account-owned external user identities and user plans |
+| `plans` | Predefined plan definitions and account-owned custom plan definitions |
+| `monthly_usage` | Monthly consumption counters for accounts and individual users |
+| `usage_records` | Accepted and rejected consumption attempts |
+| `schema_migrations` | Migration history |
 
-## Performance test
+## Performance Test
 
 A local performance test can be run using Grafana k6 in Docker.
 
 Performance results depend on the application version, database state, workload, and machine resources. Historical local measurements are not production capacity guarantees; rerun the test after significant changes to refresh the report.
 
-### Example recorded local run
+### Example Recorded Local Run
 
 | Metric | Result |
 |---|---:|
@@ -302,9 +463,9 @@ Performance results depend on the application version, database state, workload,
 | HTTP request failure rate | 0% |
 | Checks | 100% passed |
 
-The HTTP request total includes setup requests. These measurements were obtained in a local Docker environment and should not be interpreted as production capacity guarantees. Verify these figures against the corresponding test report before publishing them as recorded results.
+The HTTP request total includes setup requests. These measurements were obtained in a local Docker environment and should not be interpreted as production capacity guarantees. Verify the figures against the corresponding test report before publishing them as recorded results.
 
-### Run the test
+### Run the Test
 
 Run the following command from the project root:
 
@@ -314,7 +475,7 @@ docker run --rm --mount "type=bind,source=$($PWD.Path),target=/work" -w /work gr
 
 Review the generated report before committing it. Performance artifacts must not expose raw API keys or other secrets.
 
-## Assumptions and limitations
+## Assumptions and Limitations
 
 - The service meters one resource type: units.
 - Monthly periods use the UTC calendar month.
@@ -324,3 +485,29 @@ Review the generated report before committing it. Performance artifacts must not
 - Historical summaries do not retain historical snapshots of plan definitions.
 - The demo and seeded credentials are for local development only.
 - Performance results should be rerun in the target environment and recorded with the test commands and load settings.
+
+## Screenshots
+
+Screenshots of the web dashboard can be added here to demonstrate the workspace creation flow, user management, plan management, consumption interface, and API Explorer.
+
+Example structure:
+
+```text
+docs/
+└── screenshots/
+    ├── dashboard.png
+    ├── users.png
+    ├── plans.png
+    ├── consume-usage.png
+    └── api-explorer.png
+```
+
+After adding the images to the repository, embed them using Markdown, for example:
+
+```markdown
+![UsageMetering Dashboard](docs/screenshots/dashboard.png)
+```
+
+## License
+
+Add the project's license information here if a license has been selected.
