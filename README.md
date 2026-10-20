@@ -324,3 +324,55 @@ Review the generated report before committing it. Performance artifacts must not
 - Historical summaries do not retain historical snapshots of plan definitions.
 - The demo and seeded credentials are for local development only.
 - Performance results should be rerun in the target environment and recorded with the test commands and load settings.
+
+## Web Application and User Interface
+
+The project also includes an ASP.NET Core MVC web application that provides a browser-based interface for interacting with the Usage Metering API.
+
+### Web Application Features
+
+- **Dashboard:** A central interface for accessing the main application features and viewing usage-related information.
+- **Workspace Management:** Create a workspace (account) and connect the web application to the API.
+- **Users:** Manage users associated with the authenticated account.
+- **Usage Consumption:** Submit consumption requests and interact with the usage tracking functionality.
+- **Plans:** View available plans and work with account-owned custom plans.
+- **API Explorer:** Explore and interact with the API through the web interface.
+- **Privacy Policy:** A dedicated page describing privacy and data-handling practices.
+
+### Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| C# | Web application development |
+| ASP.NET Core MVC | Server-side web application framework and MVC architecture |
+| Razor Views | Rendering dynamic HTML pages |
+| HTML5 | Web page structure |
+| CSS3 | Styling, layout, responsive design, and visual effects |
+| JavaScript | Client-side interactions where implemented |
+| TypeScript | API implementation |
+| Fastify | API routing and HTTP request handling |
+| PostgreSQL | Persistent data storage |
+
+### Architecture
+
+The web application and API are separate application components. The MVC application communicates with the REST API over HTTP, while the API handles business logic, quota enforcement, authentication, and database operations.
+
+```text
+User's Browser
+      |
+      v
+ASP.NET Core MVC Web Application
+      |
+      | HTTP requests
+      v
+TypeScript + Fastify REST API
+      |
+      v
+PostgreSQL Database
+```
+
+### User Interface Design
+
+The web interface uses a dark, modern visual style with neon-inspired cyan, pink, and green accents. Its pages are organized around the main usage-metering workflows, making account access, user management, plan management, consumption, and API exploration available through a unified interface.
+
+The MVC web application complements the REST API by providing a graphical way to interact with its functionality, while the API remains responsible for enforcing account isolation, authentication, and usage quotas.
