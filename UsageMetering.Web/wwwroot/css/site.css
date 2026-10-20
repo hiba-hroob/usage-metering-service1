@@ -2164,3 +2164,53 @@ article.feature-card:not(.plan-card):not(:has(form)) {
             transform: none;
         }
 }
+/* Fix navigation visibility on mobile */
+
+.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.header-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    min-width: 0;
+}
+
+.header-nav a {
+    display: inline-block;
+    padding: 8px 10px;
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .site-header {
+        align-items: center;
+    }
+
+    .header-nav {
+        display: flex !important;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        flex-basis: 100%;
+        gap: 4px;
+        order: 3;
+    }
+
+    .header-nav a {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px;
+    }
+
+    .header-cta {
+        display: none;
+    }
+}
