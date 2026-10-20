@@ -57,24 +57,40 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const menuToggle = document.querySelector('.menu-toggle');
-        const headerNav = document.querySelector('.header-nav');
+        const button = document.querySelector('.menu-toggle');
+        const nav = document.querySelector('.header-nav');
 
-        if (!menuToggle || !headerNav) {
-            console.error('Navigation elements not found!');
+        if (!button || !nav) {
+            alert('Menu button or navigation not found!');
             return;
         }
 
-        menuToggle.addEventListener('click', function () {
-            const isOpen = headerNav.classList.toggle('is-open');
+        button.onclick = function () {
+            const isOpen = nav.classList.contains('is-open');
 
-            menuToggle.setAttribute('aria-expanded', isOpen);
-            console.log('Menu is open:', isOpen);
-        });
+            if (isOpen) {
+                nav.classList.remove('is-open');
+                nav.style.setProperty('display', 'none', 'important');
+            } else {
+                nav.classList.add('is-open');
+                nav.style.setProperty('display', 'flex', 'important');
+                nav.style.setProperty('flex-direction', 'column', 'important');
+                nav.style.setProperty('position', 'relative', 'important');
+                nav.style.setProperty('width', '100%', 'important');
+                nav.style.setProperty('background', '#10131f', 'important');
+                nav.style.setProperty('z-index', '99999', 'important');
+                nav.style.setProperty('visibility', 'visible', 'important');
+                nav.style.setProperty('opacity', '1', 'important');
+            }
+
+            button.setAttribute('aria-expanded', String(!isOpen));
+        };
     });
 </script>
+
 
 </body>
 </html>
