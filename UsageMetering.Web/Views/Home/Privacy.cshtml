@@ -1,6 +1,209 @@
-﻿@{
+﻿
+@{
     ViewData["Title"] = "Privacy Policy";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<div class="privacy-page">
+
+    <section class="privacy-hero">
+        <span class="eyebrow">SECURITY &amp; TRANSPARENCY</span>
+
+        <h1>Privacy Policy</h1>
+
+        <p>
+            UsageMetering helps applications manage API accounts,
+            user quotas, and consumption records. This policy explains
+            what information the service processes, how it is used,
+            and the security practices implemented by the API.
+        </p>
+    </section>
+
+    <div class="privacy-content">
+
+        <section class="privacy-section">
+            <h2>01. Information We Process</h2>
+
+            <p>
+                UsageMetering processes information required to authenticate
+                accounts, enforce usage limits, and maintain consumption history.
+                Depending on your interactions with the service, this may include:
+            </p>
+
+            <ul>
+                <li>Account names and application identifiers.</li>
+                <li>External user identifiers associated with an account.</li>
+                <li>Assigned plans, monthly allowances, and per-request limits.</li>
+                <li>Usage totals for accounts and individual users.</li>
+                <li>Request IDs, requested units, processing outcomes, and consumption history.</li>
+                <li>API key hashes used for account authentication.</li>
+            </ul>
+        </section>
+
+        <section class="privacy-section">
+            <h2>02. How Information Is Used</h2>
+
+            <p>
+                Information is processed to provide the core functionality
+                of the UsageMetering service, including:
+            </p>
+
+            <ul>
+                <li>Authenticating accounts through API keys.</li>
+                <li>Associating users and custom plans with their owning accounts.</li>
+                <li>Checking account-level and user-level quotas.</li>
+                <li>Recording accepted and rejected consumption requests.</li>
+                <li>Preventing duplicate consumption through request ID idempotency.</li>
+                <li>Generating monthly usage summaries and paginated history.</li>
+                <li>Supporting authorized plan management operations.</li>
+            </ul>
+        </section>
+
+        <section class="privacy-section privacy-security">
+            <h2>03. API Keys &amp; Authentication</h2>
+
+            <p>
+                API keys are sensitive credentials used to authenticate
+                account-scoped requests. The API stores a SHA-256 hash of
+                an account's API key in PostgreSQL rather than storing the
+                raw key value.
+            </p>
+
+            <p>
+                Administrative plan changes use a separate administrative
+                API key configured through the ADMIN_API_KEY environment
+                variable. Administrative credentials must be kept secret
+                and must not be committed to source control.
+            </p>
+
+            <ul>
+                <li>Never publish API keys or administrative keys in public repositories.</li>
+                <li>Do not include credentials in screenshots, example payloads, or public logs.</li>
+                <li>Use HTTPS for API traffic in production deployments.</li>
+                <li>Use secure secret management and suitable access controls for production credentials.</li>
+            </ul>
+
+            <p>
+                Hashing API keys does not replace the need to protect
+                credentials during transmission or to secure the server,
+                database, and deployment environment.
+            </p>
+        </section>
+
+        <section class="privacy-section">
+            <h2>04. Account Isolation &amp; Custom Plans</h2>
+
+            <p>
+                UsageMetering associates users, usage information, and
+                custom plans with their owning accounts. Account-scoped
+                API operations use the authenticated account to determine
+                which resources may be accessed.
+            </p>
+
+            <p>
+                Custom plans are account-owned and are not intended to be
+                shared with unrelated accounts. Account owners can manage
+                their own custom plans and assign eligible plans to their
+                account's users, subject to the API's authorization rules.
+            </p>
+        </section>
+
+        <section class="privacy-section">
+            <h2>05. Usage Records &amp; Monthly Quotas</h2>
+
+            <p>
+                The service maintains monthly usage counters and consumption
+                records to enforce account and user limits. Monthly quota
+                periods use the UTC calendar month.
+            </p>
+
+            <p>
+                Accepted and rejected consumption attempts are recorded.
+                Rejected requests do not increment consumption counters.
+                Repeated requests with the same request ID and matching
+                request data do not consume units twice. Reusing a request
+                ID with different request data is rejected.
+            </p>
+
+            <p>
+                Historical usage summaries use stored counters for the
+                requested month, but plan names and quota values reflect
+                currently assigned plans rather than historical snapshots
+                of plan definitions.
+            </p>
+        </section>
+
+        <section class="privacy-section">
+            <h2>06. Storage &amp; Retention</h2>
+
+            <p>
+                The service uses PostgreSQL to store account information,
+                users, plan definitions, monthly usage counters,
+                consumption records, and migration history.
+            </p>
+
+            <p>
+                The application's database schema identifies the types
+                of records maintained by the service. Actual retention
+                periods depend on the database maintenance, backup,
+                and deletion procedures configured by the operator.
+            </p>
+
+            <p>
+                This policy does not establish a fixed deletion schedule.
+                Operators should define and document retention practices
+                appropriate to their deployment and applicable requirements.
+            </p>
+        </section>
+
+        <section class="privacy-section">
+            <h2>07. Deployment &amp; Third-Party Services</h2>
+
+            <p>
+                UsageMetering supports local deployment with Docker Compose
+                and PostgreSQL. The README's default database credentials
+                are intended for local development, not production.
+            </p>
+
+            <p>
+                Production operators should configure appropriate database
+                credentials, secret management, network access controls,
+                and transport security. Any additional infrastructure or
+                third-party services used by a deployment may have their
+                own data handling practices.
+            </p>
+        </section>
+
+        <section class="privacy-section">
+            <h2>08. Data Accuracy &amp; Your Responsibilities</h2>
+
+            <ul>
+                <li>Use identifiers that do not unnecessarily expose personal information.</li>
+                <li>Keep API and administrative credentials confidential.</li>
+                <li>Restrict access to databases, backups, and deployment secrets.</li>
+                <li>Review account access and data-retention settings regularly.</li>
+                <li>Do not submit sensitive information unless it is necessary and appropriate for your use case.</li>
+            </ul>
+        </section>
+
+        <section class="privacy-section">
+            <h2>09. Policy Updates</h2>
+
+            <p>
+                This policy should be reviewed whenever the service's
+                functionality, data processing, storage configuration,
+                or deployment practices change. The published policy
+                should always reflect the actual operation of the service.
+            </p>
+        </section>
+
+    </div>
+
+    <div class="privacy-note">
+        <strong>Important:</strong>
+        This policy is a project-specific starting point, not legal advice.
+        Before production use, review it against the complete application,
+        including the MVC frontend, API configuration, hosting environment,
+        logging, backups, and applicable privacy laws.
+    </div>
+
+</div>
