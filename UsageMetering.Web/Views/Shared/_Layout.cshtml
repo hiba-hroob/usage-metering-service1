@@ -1,4 +1,4 @@
-﻿
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,13 +19,14 @@
                 <span class="brand-name">usage<span>meter</span></span>
             </a>
 
-<button class="mobile-menu-toggle"
-        type="button"
-        aria-label="Toggle navigation"
-        aria-expanded="false"
-        onclick="toggleUsageMenu()">
-    ☰
-</button>
+            <button class="mobile-menu-toggle"
+                    type="button"
+                    aria-label="Toggle navigation"
+                    aria-expanded="false"
+                    aria-controls="main-navigation"
+                    onclick="toggleUsageMenu()">
+                ☰
+            </button>
 
             <nav class="header-nav" id="main-navigation" aria-label="Main navigation">
                 <a asp-controller="Home" asp-action="Index">Home</a>
@@ -52,5 +53,21 @@
     </div>
 
     @await RenderSectionAsync("Scripts", required: false)
+
+    <script>
+        function toggleUsageMenu() {
+            const menu = document.getElementById('main-navigation');
+            const button = document.querySelector('.mobile-menu-toggle');
+
+            if (!menu || !button) return;
+
+            const isOpen = menu.classList.toggle('is-open');
+
+            button.setAttribute('aria-expanded', String(isOpen));
+            button.setAttribute('aria-label',
+                isOpen ? 'Close navigation menu' : 'Open navigation menu');
+            button.textContent = isOpen ? '✕' : '☰';
+        }
+    </script>
 </body>
 </html>
