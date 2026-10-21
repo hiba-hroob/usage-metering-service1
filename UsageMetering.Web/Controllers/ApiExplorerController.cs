@@ -7,7 +7,7 @@ public class ApiExplorerController : Controller
 {
     public IActionResult Index()
     {
-        ViewBag.ApiBaseUrl = "http://localhost:3000";
+        ViewBag.ApiBaseUrl = "/api-explorer/proxy";
         return View();
     }
 }
