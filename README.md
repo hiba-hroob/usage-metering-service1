@@ -390,3 +390,9 @@ PostgreSQL Database
 The web interface uses a dark, modern visual style with neon-inspired cyan, pink, and green accents. Its pages are organized around the main usage-metering workflows, making account access, user management, plan management, consumption, and API exploration available through a unified interface.
 
 The MVC web application complements the REST API by providing a graphical way to interact with its functionality, while the API remains responsible for enforcing account isolation, authentication, and usage quotas.
+
+
+## Project Presentation
+
+- 🎥 **YouTube Demo:** [Watch the Project Video](https://youtu.be/2pc_QM6I6JI)
+- 💼 **LinkedIn Post:** [View Project on LinkedIn](https://lnkd.in/p/dGUnMbvS)
